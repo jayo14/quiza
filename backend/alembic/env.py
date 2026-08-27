@@ -6,6 +6,7 @@ from sqlalchemy import engine_from_config, pool
 from app.core.config import settings
 from app.db.base import Base
 import app.models  # noqa: F401  ensures all models are registered on Base.metadata
+import app.ai.vectorstore.models  # noqa: F401  registers the sqlite vector store table
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
