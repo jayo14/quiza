@@ -2,27 +2,17 @@
 
 An AI-powered study platform that turns your learning materials into quizzes, analyzes your mistakes, discovers your weaknesses, and gives you personalized practice to improve.
 
-AI-powered learning platform backend: upload study materials, generate quizzes
+AI-powered learning platform: upload study materials, generate quizzes
 grounded in that material via RAG, take them, and get AI-driven mistake
 analysis, weakness detection, learning summaries, and targeted practice.
-
-Backend only — Python/FastAPI. No frontend, no Node.js.
 
 Core loop: **Upload → Process → Generate Quiz → Attempt → Analyze → Detect
 Weakness → Explain → Targeted Practice → Track Improvement**
 
 ## Stack
 
-- FastAPI + Pydantic / Pydantic Settings
-- SQLAlchemy 2.0 + Alembic
-- SQLite for local development (swap `DATABASE_URL` for Postgres in production)
-- JWT auth (`python-jose`) + `bcrypt` password hashing
-- OpenAI for LLM + embeddings, behind provider interfaces (`LLMProvider`,
-  `EmbeddingProvider`) so the backend can swap providers without touching callers
-- A `VectorStore` abstraction with two implementations: brute-force cosine
-  search over a SQLite table (default, zero extra infra) and a pgvector-backed
-  implementation for Postgres in production
-- PyMuPDF (PDF), `python-docx` (DOC/DOCX), `pytesseract` (OCR for images)
+- **Backend**: FastAPI, Pydantic, SQLAlchemy 2.0, Alembic, SQLite / Postgres (pgvector), PyMuPDF, OpenAI
+- **Frontend**: React, Vite, Tailwind CSS
 
 API docs are served by FastAPI's own OpenAPI integration — no extra
 documentation framework is needed (`drf-spectacular` is Django REST
@@ -31,29 +21,31 @@ Framework-specific and doesn't apply here).
 ## Project layout
 
 ```text
-app/
-├── main.py              # FastAPI app, middleware, exception handlers
-├── core/                 # settings, JWT/password security, rate limiting, exceptions
-├── api/v1/                # route handlers only — no business logic here
-├── models/                # SQLAlchemy models
-├── schemas/               # Pydantic request/response models
-├── services/               # business logic, called from routes
-├── ai/
-│   ├── llm/                  # LLMProvider abstraction + OpenAI implementation
-│   ├── embeddings/            # EmbeddingProvider abstraction + OpenAI implementation
-│   ├── vectorstore/            # VectorStore abstraction: SQLite + pgvector
-│   ├── rag/                     # parsing, chunking, ingestion, retrieval, context assembly
-│   ├── prompts/                  # prompt templates, kept out of route handlers
-│   ├── quiz_generator.py          # RAG-grounded quiz generation
-│   ├── answer_analyzer.py          # structured mistake analysis
-│   ├── weakness_detector.py         # deterministic weakness aggregation
-│   ├── summary_generator.py          # AI learning summaries
-│   └── practice_generator.py          # targeted practice generation
-├── storage/                # file storage abstraction (local disk by default)
-└── db/                      # engine/session, declarative base
-
-alembic/                     # migrations
-tests/                        # pytest suite, all AI calls mocked
+quiza/
+├── backend/
+│   ├── app/
+│   │   ├── main.py              # FastAPI app, middleware, exception handlers
+│   │   ├── core/                 # settings, JWT/password security, rate limiting, exceptions
+│   │   ├── api/v1/                # route handlers only — no business logic here
+│   │   ├── models/                # SQLAlchemy models
+│   │   ├── schemas/               # Pydantic request/response models
+│   │   ├── services/               # business logic, called from routes
+│   │   ├── ai/
+│   │   │   ├── llm/                  # LLMProvider abstraction + OpenAI implementation
+│   │   │   ├── embeddings/            # EmbeddingProvider abstraction + OpenAI implementation
+│   │   │   ├── vectorstore/            # VectorStore abstraction: SQLite + pgvector
+│   │   │   ├── rag/                     # parsing, chunking, ingestion, retrieval, context assembly
+│   │   │   ├── prompts/                  # prompt templates, kept out of route handlers
+│   │   │   ├── quiz_generator.py          # RAG-grounded quiz generation
+   │   │   ├── answer_analyzer.py          # structured mistake analysis
+   │   │   ├── weakness_detector.py         # deterministic weakness aggregation
+   │   │   ├── summary_generator.py          # AI learning summaries
+   │   │   └── practice_generator.py          # targeted practice generation
+│   │   ├── storage/                # file storage abstraction (local disk by default)
+│   │   └── db/                      # engine/session, declarative base
+│   ├── alembic/                     # migrations
+│   └── tests/                        # pytest suite, all AI calls mocked
+└── frontend/                        # Web application (Vite / React)
 ```
 
 ## Installation
@@ -203,4 +195,3 @@ curl -X POST localhost:8000/api/v1/practice/generate \
 - AI-heavy endpoints (`quizzes/generate`, `practice/generate`,
   `attempts/{id}/summary`) sit behind a per-user rate limiter
   (`AI_RATE_LIMIT_PER_MINUTE`)
->>>>>>> 934fa9f (Add README, Dockerfile, and docker-compose for local setup)
