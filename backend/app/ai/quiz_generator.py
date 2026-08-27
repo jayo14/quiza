@@ -35,7 +35,7 @@ class GeneratedQuiz(BaseModel):
     questions: list[GeneratedQuestion]
 
 
-def _business_validate(
+def validate_generated_questions(
     questions: list[GeneratedQuestion], *, number_of_questions: int, question_types: list[QuestionType]
 ) -> list[GeneratedQuestion]:
     """Second validation pass beyond Pydantic schema checks: enforces the
@@ -107,6 +107,6 @@ async def generate_quiz_questions(
         response_model=GeneratedQuiz,
     )
 
-    return _business_validate(
+    return validate_generated_questions(
         result.questions, number_of_questions=number_of_questions, question_types=question_types
     )
