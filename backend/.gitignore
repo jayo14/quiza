@@ -4,7 +4,7 @@ __pycache__/
 venv/
 .env
 *.db
-storage/
+/storage/
 .pytest_cache/
 *.egg-info/
 .DS_Store
