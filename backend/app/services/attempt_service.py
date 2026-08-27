@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.ai.weakness_detector import detect_and_update_weaknesses
 from app.core.exceptions import NotFoundError, ValidationFailedError
 from app.models.answer import Answer
 from app.models.enums import AttemptStatus, QuestionType, QuizStatus
@@ -97,6 +98,13 @@ def submit_attempt(
     db.add(attempt)
     db.commit()
     db.refresh(attempt)
+
+    # Deterministic, no LLM involved: cheap enough to run inline on every
+    # submission so weakness data is always current by the time the response
+    # (and later, the summary/practice endpoints) are read.
+    topics = {q.topic for q in quiz.questions}
+    detect_and_update_weaknesses(db, user_id=user.id, topics=topics)
+
     return attempt
 
 
