@@ -1,0 +1,17 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # SQLite by default so this stack runs with zero extra services. Point
+      # DATABASE_URL at a Postgres service (with pgvector installed) and set
+      # VECTOR_STORE_BACKEND=pgvector instead, for a production-like setup.
+      - DATABASE_URL=sqlite:////app/storage/quiza.db
+    volumes:
+      - quiza_storage:/app/storage
+
+volumes:
+  quiza_storage:
