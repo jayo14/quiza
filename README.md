@@ -2,53 +2,106 @@
 
 An AI-powered study platform that turns your learning materials into quizzes, analyzes your mistakes, discovers your weaknesses, and gives you personalized practice to improve.
 
-AI-powered learning platform: upload study materials, generate quizzes
-grounded in that material via RAG, take them, and get AI-driven mistake
-analysis, weakness detection, learning summaries, and targeted practice.
+Quiza is a full-stack learning platform: upload study materials, generate quizzes grounded in that material via RAG, take them, and get AI-driven mistake analysis, weakness detection, learning summaries, and targeted practice.
 
-Core loop: **Upload → Process → Generate Quiz → Attempt → Analyze → Detect
-Weakness → Explain → Targeted Practice → Track Improvement**
+Core loop: **Upload Material → Background Processing → RAG Quiz Generation → Interactive Attempt → AI Mistake Analysis → Weakness Detection → Personalized Practice → Track Improvement**
 
-## Stack
+---
 
-- **Backend**: FastAPI, Pydantic, SQLAlchemy 2.0, Alembic, SQLite / Postgres (pgvector), PyMuPDF, OpenAI
-- **Frontend**: React, Vite, Tailwind CSS
+## Tech Stack
 
-API docs are served by FastAPI's own OpenAPI integration — no extra
-documentation framework is needed (`drf-spectacular` is Django REST
-Framework-specific and doesn't apply here).
+### Frontend
+- **Framework & Build Tool**: React 19, Vite
+- **Styling**: Modern CSS / CSS Modules
+- **Linting**: Oxlint
 
-## Project layout
+### Backend
+- **Framework**: FastAPI (Python 3.10+) + Pydantic v2 / Pydantic Settings
+- **Database & ORM**: SQLAlchemy 2.0 + Alembic migrations
+- **Local Database**: SQLite (default, zero extra infra)
+- **Production Database**: PostgreSQL with `pgvector` extension
+- **Authentication**: JWT (`python-jose`) + `bcrypt` password hashing
+- **Document Processing**: PyMuPDF (PDF), `python-docx` (DOC/DOCX), `pytesseract` (OCR)
+
+### AI & RAG Engine
+- **LLM & Embeddings**: OpenAI (`gpt-4o-mini` / `text-embedding-3-small`) behind abstract provider interfaces (`LLMProvider`, `EmbeddingProvider`)
+- **Vector Store**: Pluggable `VectorStore` interface with SQLite cosine distance (local) and `pgvector` (production)
+- **RAG Retrieval**: Grounded retrieval scoped strictly to user ownership
+
+---
+
+## Project Layout
 
 ```text
 quiza/
-├── backend/
-│   ├── app/
-│   │   ├── main.py              # FastAPI app, middleware, exception handlers
-│   │   ├── core/                 # settings, JWT/password security, rate limiting, exceptions
-│   │   ├── api/v1/                # route handlers only — no business logic here
-│   │   ├── models/                # SQLAlchemy models
-│   │   ├── schemas/               # Pydantic request/response models
-│   │   ├── services/               # business logic, called from routes
-│   │   ├── ai/
-│   │   │   ├── llm/                  # LLMProvider abstraction + OpenAI implementation
-│   │   │   ├── embeddings/            # EmbeddingProvider abstraction + OpenAI implementation
-│   │   │   ├── vectorstore/            # VectorStore abstraction: SQLite + pgvector
-│   │   │   ├── rag/                     # parsing, chunking, ingestion, retrieval, context assembly
-│   │   │   ├── prompts/                  # prompt templates, kept out of route handlers
-│   │   │   ├── quiz_generator.py          # RAG-grounded quiz generation
-   │   │   ├── answer_analyzer.py          # structured mistake analysis
-   │   │   ├── weakness_detector.py         # deterministic weakness aggregation
-   │   │   ├── summary_generator.py          # AI learning summaries
-   │   │   └── practice_generator.py          # targeted practice generation
-│   │   ├── storage/                # file storage abstraction (local disk by default)
-│   │   └── db/                      # engine/session, declarative base
-│   ├── alembic/                     # migrations
-│   └── tests/                        # pytest suite, all AI calls mocked
-└── frontend/                        # Web application (Vite / React)
+├── frontend/                        # Web application (React + Vite)
+│   ├── src/                         # React components, styles, and assets
+│   ├── public/                      # Static assets and icons
+│   ├── package.json                 # Dependencies and npm scripts
+│   ├── vite.config.js               # Vite build configuration
+│   └── .oxlintrc.json               # Oxlint configuration
+│
+└── backend/                         # FastAPI backend & AI engine
+    ├── app/
+    │   ├── main.py                  # FastAPI entrypoint, CORS, middleware
+    │   ├── core/                    # App settings, JWT security, rate limits, exceptions
+    │   ├── api/v1/                  # REST API endpoints (auth, materials, quizzes, attempts, analytics)
+    │   ├── models/                  # SQLAlchemy ORM models
+    │   ├── schemas/                 # Pydantic validation schemas
+    │   ├── services/                # Business logic layers
+    │   ├── ai/                      # AI & RAG system
+    │   │   ├── llm/                 # LLMProvider interface & OpenAI driver
+    │   │   ├── embeddings/          # EmbeddingProvider interface & OpenAI driver
+    │   │   ├── vectorstore/         # VectorStore abstraction (SQLite & pgvector)
+    │   │   ├── rag/                 # File ingestion, chunking, retrieval
+    │   │   ├── prompts/             # Prompt engineering templates
+    │   │   ├── quiz_generator.py    # RAG quiz generation
+    │   │   ├── answer_analyzer.py    # AI mistake analysis
+    │   │   ├── weakness_detector.py # Algorithmic weakness aggregation
+    │   │   ├── summary_generator.py # Learning summary generation
+    │   │   └── practice_generator.py# Targeted practice questions
+    │   ├── storage/                 # Document storage providers
+    │   └── db/                      # Database connection and session management
+    ├── alembic/                     # Database migrations
+    ├── tests/                       # Pytest test suite with mocked AI providers
+    ├── Dockerfile                   # Backend Docker build script
+    └── docker-compose.yml           # Local container orchestration
 ```
 
-## Installation
+---
+
+## Getting Started
+
+### Prerequisites
+- **Node.js** (v18+) & **npm**
+- **Python** (3.10+)
+- **OpenAI API Key** (for AI features)
+
+---
+
+### 1. Frontend Setup
+
+Navigate to the `frontend/` directory, install dependencies, and start the development server:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend development server will run at `http://localhost:5173`.
+
+#### Available Frontend Scripts
+- `npm run dev` — Starts Vite development server with HMR.
+- `npm run build` — Builds production-ready static assets into `dist/`.
+- `npm run lint` — Runs Oxlint for code linting.
+- `npm run preview` — Previews the production build locally.
+
+---
+
+### 2. Backend Setup
+
+Navigate to the `backend/` directory, create a virtual environment, install dependencies, and set up environment variables:
 
 ```bash
 cd backend
@@ -57,141 +110,112 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Environment variables
-
-Copy the example file and fill in what you need:
+#### Environment Variables
+Copy `.env.example` to `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-Everything works out of the box for local development except `OPENAI_API_KEY`,
-which is required for any endpoint that actually calls the LLM or embeddings
-(material processing, quiz generation, mistake analysis, summaries, practice
-generation). See `.env.example` for the full list with comments; the
-important ones:
+Key environment variables:
+| Variable | Purpose | Default |
+|---|---|---|
+| `DATABASE_URL` | Relational database connection string | `sqlite:///./quiza.db` |
+| `JWT_SECRET_KEY` | Secret key for signing JWT tokens | (Required in production) |
+| `OPENAI_API_KEY` | OpenAI key for RAG & quiz generation | (Required for AI endpoints) |
+| `VECTOR_STORE_BACKEND` | Vector storage backend (`sqlite` or `pgvector`) | `sqlite` |
+| `STORAGE_DIR` | Directory for uploaded material files | `./storage_data` |
+| `AI_RATE_LIMIT_PER_MINUTE` | Rate limit for AI endpoints per user | `10` |
 
-| Variable | Purpose |
-|---|---|
-| `DATABASE_URL` | `sqlite:///./quiza.db` locally; a Postgres URL in production |
-| `JWT_SECRET_KEY` | Must be overridden in production — the app refuses to start with the default if `APP_ENV=production` |
-| `OPENAI_API_KEY` | Required for any AI-backed endpoint |
-| `VECTOR_STORE_BACKEND` | `sqlite` (default) or `pgvector` |
-| `STORAGE_DIR` | Where uploaded files are written locally |
-| `AI_RATE_LIMIT_PER_MINUTE` | Per-user limit on quiz/practice generation and summary requests |
-
-## Database setup & migrations
-
-SQLite needs no setup — the file is created on first migration.
+#### Database Setup & Migrations
+Apply database migrations with Alembic:
 
 ```bash
-alembic upgrade head          # apply all migrations
-alembic revision --autogenerate -m "describe your change"   # after changing models
+alembic upgrade head
 ```
 
-To move to Postgres + pgvector in production: set `DATABASE_URL` to your
-Postgres connection string, enable the `pgvector` extension on that database,
-set `VECTOR_STORE_BACKEND=pgvector`, install the `pgvector` Python package,
-and run `alembic upgrade head` again.
-
-## Running the API
+#### Running the Backend API
+Start the FastAPI server using Uvicorn:
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-- Health check: http://localhost:8000/health
+- **API Documentation (Swagger UI)**: `http://localhost:8000/docs`
+- **ReDoc**: `http://localhost:8000/redoc`
+- **Health Check**: `http://localhost:8000/health`
 
-Or with Docker:
+#### Running with Docker
+Alternatively, run the backend using Docker Compose:
 
 ```bash
 cd backend
 docker compose up --build
 ```
 
-## Running tests
+---
+
+## Running Backend Tests
+
+Run the pytest suite:
 
 ```bash
+cd backend
 pytest
 ```
 
-Every test mocks the `LLMProvider`/`EmbeddingProvider` call sites directly
-(see `tests/fakes.py`) — no test ever calls OpenAI or spends real credits.
-Each test run gets a fresh SQLite database (a temp file created in
-`tests/conftest.py`), so tests don't interfere with your local `quiza.db`.
+All AI calls (`LLMProvider`/`EmbeddingProvider`) are automatically mocked in tests via `tests/fakes.py` so running tests does not consume OpenAI credits or require network access.
 
-## AI configuration
+---
 
-All AI calls go through `LLMProvider`/`EmbeddingProvider` (`app/ai/llm`,
-`app/ai/embeddings`), currently backed by OpenAI (`openai_chat_model` /
-`openai_embedding_model` in settings). LLM calls that must return structured
-data go through `LLMProvider.generate_structured`, which asks for JSON
-matching a Pydantic schema, validates it, and retries once with the
-validation error fed back to the model before raising `AIServiceError` — so a
-flaky or malformed response never crashes a request, it surfaces as a clean
-502.
+## AI & RAG System Architecture
 
-Prompts live in `app/ai/prompts/`, not inline in route handlers or services.
+1. **Ingestion**: Uploading material via `POST /api/v1/materials` triggers background parsing, chunking, embedding, and vector storage.
+2. **Retrieval**: Vector retrieval is strictly scoped to the requesting `user_id` at both vector-store and relational database layers.
+3. **Structured AI Generation**: LLM outputs (quizzes, analysis, summaries) are validated against Pydantic models with automatic single-retry error feedback on schema mismatch.
 
-## RAG configuration
+---
 
-Upload flow: `POST /api/v1/materials` validates and stores the file, creates
-a `Material` row (`status=uploaded`), and returns immediately — parsing,
-chunking, embedding, and vector storage all run in a background task so
-upload latency doesn't scale with document size. Poll
-`GET /api/v1/materials/{id}` for `status` (`processing` → `ready`/`failed`).
-
-Retrieval is always scoped to the requesting `user_id` at the vector-store
-level (`VectorStore.search` requires it), with a second ownership check at
-the relational layer in `app/ai/rag/retrieval.py` — one student's material is
-never retrievable by another, even if a future vector store implementation
-forgets to filter.
-
-## Example API requests
+## Example API Requests
 
 ```bash
-# Sign up
-curl -X POST localhost:8000/api/v1/auth/signup \
+# 1. Sign Up
+curl -X POST http://localhost:8000/api/v1/auth/signup \
   -H "Content-Type: application/json" \
-  -d '{"email":"a@example.com","password":"password123","name":"A"}'
+  -d '{"email":"student@example.com","password":"password123","name":"Student"}'
 
-# Upload a material (use the access_token from signup)
-curl -X POST localhost:8000/api/v1/materials \
+# 2. Upload Material (use access_token from signup response)
+curl -X POST http://localhost:8000/api/v1/materials \
   -H "Authorization: Bearer $TOKEN" \
-  -F "file=@notes.pdf"
+  -F "file=@lecture_notes.pdf"
 
-# Generate a quiz once the material's status is "ready"
-curl -X POST localhost:8000/api/v1/quizzes/generate \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+# 3. Generate Quiz (when material status is "ready")
+curl -X POST http://localhost:8000/api/v1/quizzes/generate \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
   -d '{"material_id":"<id>","number_of_questions":10,"difficulty":"medium","question_types":["multiple_choice","true_false"]}'
 
-# Start and submit an attempt
-curl -X POST localhost:8000/api/v1/quizzes/<quiz_id>/attempts -H "Authorization: Bearer $TOKEN"
-curl -X POST localhost:8000/api/v1/attempts/<attempt_id>/submit \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+# 4. Start & Submit Quiz Attempt
+curl -X POST http://localhost:8000/api/v1/quizzes/<quiz_id>/attempts -H "Authorization: Bearer $TOKEN"
+curl -X POST http://localhost:8000/api/v1/attempts/<attempt_id>/submit \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
   -d '{"answers":[{"question_id":"<id>","selected_answer":"True"}]}'
 
-# Weaknesses, summary, and targeted practice
-curl localhost:8000/api/v1/analytics/weaknesses -H "Authorization: Bearer $TOKEN"
-curl localhost:8000/api/v1/attempts/<attempt_id>/summary -H "Authorization: Bearer $TOKEN"
-curl -X POST localhost:8000/api/v1/practice/generate \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+# 5. Fetch Weaknesses, Learning Summary & Generate Targeted Practice
+curl http://localhost:8000/api/v1/analytics/weaknesses -H "Authorization: Bearer $TOKEN"
+curl http://localhost:8000/api/v1/attempts/<attempt_id>/summary -H "Authorization: Bearer $TOKEN"
+curl -X POST http://localhost:8000/api/v1/practice/generate \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
   -d '{"material_id":"<id>","number_of_questions":5}'
 ```
 
-## Security notes
+---
 
-- Passwords hashed with bcrypt; JWTs signed with `JWT_SECRET_KEY`
-- Every resource lookup (`materials`, `quizzes`, `attempts`, `weaknesses`) is
-  scoped to the authenticated user — ownership is derived from the JWT, never
-  from a client-supplied `user_id`; cross-user access returns `404`, not `403`,
-  so ownership can't be probed
-- Quiz question endpoints never return `correct_answer`/`explanation` until
-  after an attempt is submitted
-- Uploads are validated by extension, content type, and size before being
-  stored
-- AI-heavy endpoints (`quizzes/generate`, `practice/generate`,
-  `attempts/{id}/summary`) sit behind a per-user rate limiter
-  (`AI_RATE_LIMIT_PER_MINUTE`)
+## Security Notes
+
+- Passwords hashed with `bcrypt`; JWT authentication with configurable secret keys.
+- Data access is isolated per user; resources checked for ownership returning `404 Not Found` for unauthorized access.
+- Question answers and explanations are hidden until quiz attempts are submitted.
+- Per-user rate limiting on AI generation endpoints to prevent abuse.
