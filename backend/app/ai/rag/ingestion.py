@@ -26,9 +26,8 @@ async def ingest_material(
     raises past its own boundary so a bad upload can't take down the background task
     runner, it just leaves the material in `failed` with an explanation."""
 
-    provider = embedding_provider or get_embedding_provider()
-
     try:
+        provider = embedding_provider or get_embedding_provider()
         parser = get_parser_for(material.file_type)
         pages = parser.parse(file_bytes)
         chunks = chunk_pages(pages)
