@@ -3,12 +3,10 @@ from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.core.config import settings
-
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class TokenType(StrEnum):
@@ -17,12 +15,18 @@ class TokenType(StrEnum):
     PASSWORD_RESET = "password_reset"
 
 
+# bcrypt's own limit: only the first 72 bytes of the input are hashed.
+_BCRYPT_MAX_BYTES = 72
+
+
 def hash_password(password: str) -> str:
-    return _pwd_context.hash(password)
+    password_bytes = password.encode("utf-8")[:_BCRYPT_MAX_BYTES]
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
-    return _pwd_context.verify(plain_password, password_hash)
+    password_bytes = plain_password.encode("utf-8")[:_BCRYPT_MAX_BYTES]
+    return bcrypt.checkpw(password_bytes, password_hash.encode("utf-8"))
 
 
 def _create_token(subject: str, token_type: TokenType, expires_delta: timedelta) -> str:
