@@ -1,0 +1,53 @@
+/* /* .stats-card {
+  padding: 20px;
+
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.stat-card__title {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.stat-card__value {
+  margin-top: 8px;
+
+  color: var(--text-primary);
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.stat-card__description {
+  display: block;
+  margin-top: 4px;
+
+  color: var(--text-secondary);
+  font-size: 12px;
+} */  
+ .stat-card {
+  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.stat-card__title {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.stat-card__value {
+  margin-top: 8px;
+  color: var(--text-primary);
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.stat-card__description {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}

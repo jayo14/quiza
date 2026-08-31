@@ -1,0 +1,147 @@
+.header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: calc(100% - var(--sidebar-width));
+  background-color: var(--bg-primary);
+  box-sizing: border-box;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--border-color);
+  transition: width 0.3s ease;
+}
+
+.header__left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header__menu-btn {
+  display: none;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.header__menu-btn:hover {
+  background: var(--bg-secondary);
+}
+
+/* Greeting */
+
+.header__greeting h1 {
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.header__greeting p {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* Actions */
+
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Notification */
+
+.header__notification {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.header__notification:hover {
+  background: var(--bg-secondary);
+}
+
+/* Profile */
+
+.header__profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Avatar */
+
+.header__avatar {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+
+  background: var(--primary);
+  border-radius: 50%;
+
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* User */
+
+.header__user {
+  display: flex;
+  flex-direction: column;
+}
+
+.header__user span {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.header__user small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* Responsive */
+
+@media (max-width: 768px) {
+  .header {
+    width: 100%;
+    padding: 16px 20px;
+  }
+
+  .header__menu-btn {
+    display: flex;
+  }
+
+  .header__greeting h1 {
+    font-size: 18px;
+  }
+
+  .header__greeting p {
+    display: none;
+  }
+
+  .header__user {
+    display: none;
+  }
+}

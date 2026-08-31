@@ -1,0 +1,95 @@
+.review-answers {
+  padding: 32px;
+}
+
+.review-answers__header h1 {
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.review-answers__header p {
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.review-answers__list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.review-answers__card {
+  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.review-answers__question span,
+.review-answers__result span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.review-answers__question h2 {
+  margin-top: 8px;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.review-answers__result {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.review-answers__result div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-answers__result strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.review-answers__status {
+  margin-top: 18px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.review-answers__card.correct .review-answers__status {
+  color: var(--primary);
+}
+
+.review-answers__card.incorrect .review-answers__status {
+  color: #e05252;
+}
+
+.review-answers__back {
+  margin-top: 24px;
+  padding: 11px 18px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .review-answers {
+    padding: 20px 16px;
+  }
+
+  .review-answers__result {
+    grid-template-columns: 1fr;
+  }
+}
