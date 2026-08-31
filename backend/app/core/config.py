@@ -19,9 +19,9 @@ class Settings(BaseSettings):
     refresh_token_expire_minutes: int = 60 * 24 * 30
     password_reset_token_expire_minutes: int = 30
 
-    openai_api_key: str | None = None
-    openai_chat_model: str = "gpt-4o-mini"
-    openai_embedding_model: str = "text-embedding-3-small"
+    gemini_api_key: str | None = None
+    gemini_chat_model: str = "gemini-2.5-flash"
+    gemini_embedding_model: str = "text-embedding-004"
 
     storage_backend: str = "local"
     storage_dir: str = "./storage"

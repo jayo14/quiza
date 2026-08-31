@@ -26,12 +26,12 @@ services:
         value: "60"
       - key: REFRESH_TOKEN_EXPIRE_MINUTES
         value: "43200"
-      - key: OPENAI_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
-      - key: OPENAI_CHAT_MODEL
-        value: gpt-4o-mini
-      - key: OPENAI_EMBEDDING_MODEL
-        value: text-embedding-3-small
+      - key: GEMINI_CHAT_MODEL
+        value: gemini-2.5-flash
+      - key: GEMINI_EMBEDDING_MODEL
+        value: text-embedding-004
       - key: STORAGE_BACKEND
         value: local
       - key: STORAGE_DIR

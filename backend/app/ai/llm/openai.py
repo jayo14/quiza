@@ -1,38 +1,41 @@
-from openai import APIError, APITimeoutError, AsyncOpenAI, RateLimitError
+from google import genai
+from google.genai import types
+from google.genai.errors import APIError
 
 from app.ai.llm.base import LLMProvider
 from app.core.config import settings
 from app.core.exceptions import AIServiceError
 
 
-class OpenAILLMProvider(LLMProvider):
+class GeminiLLMProvider(LLMProvider):
     def __init__(self, model: str | None = None) -> None:
-        self._client = AsyncOpenAI(api_key=settings.openai_api_key)
-        self._model = model or settings.openai_chat_model
+        self._client = genai.Client(api_key=settings.gemini_api_key)
+        self._model = model or settings.gemini_chat_model
 
     async def complete(self, *, system_prompt: str, user_prompt: str) -> str:
         try:
-            response = await self._client.chat.completions.create(
+            response = await self._client.aio.models.generate_content(
                 model=self._model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                response_format={"type": "json_object"},
-                temperature=0.3,
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    response_mime_type="application/json",
+                    temperature=0.3,
+                ),
             )
-        except RateLimitError as exc:
-            raise AIServiceError("The AI provider is rate-limiting requests, try again shortly.") from exc
-        except APITimeoutError as exc:
-            raise AIServiceError("The AI provider timed out.") from exc
         except APIError as exc:
             raise AIServiceError(f"The AI provider returned an error: {exc}") from exc
+        except Exception as exc:
+            raise AIServiceError(f"The AI provider request failed: {exc}") from exc
 
-        content = response.choices[0].message.content
-        if not content:
+        if not response.text:
             raise AIServiceError("The AI provider returned an empty response.")
-        return content
+        return response.text
+
+
+# Backward compatibility alias
+OpenAILLMProvider = GeminiLLMProvider
 
 
 def get_llm_provider() -> LLMProvider:
-    return OpenAILLMProvider()
+    return GeminiLLMProvider()
