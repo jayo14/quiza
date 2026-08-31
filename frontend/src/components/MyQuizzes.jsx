@@ -1,5 +1,7 @@
 import "./MyQuizzes.css";
+
 import { useNavigate } from "react-router-dom";
+import { Plus } from "lucide-react";
 
 function MyQuizzes() {
   const navigate = useNavigate();
@@ -11,6 +13,14 @@ function MyQuizzes() {
           <h1>My Quizzes</h1>
           <p>Review your quizzes and keep track of your performance.</p>
         </div>
+
+        <button
+          className="my-quizzes__generate"
+          onClick={() => navigate("/upload")}
+        >
+          <Plus size={17} />
+          Generate Quiz
+        </button>
       </div>
 
       <div className="my-quizzes__list">

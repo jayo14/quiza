@@ -154,6 +154,38 @@
   font-size: 11px;
 }
 
+/* Sign Out */
+
+.sidebar__logout {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 11px 12px;
+
+  border: none;
+  border-radius: var(--radius-sm);
+
+  background: transparent;
+  color: #dc2626;
+
+  font-family: inherit;
+  font-size: 13px;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.sidebar__logout:hover {
+  background: rgba(220, 38, 38, 0.08);
+  color: #ef4444;
+}
+
 /* Mobile responsive drawer */
 @media (max-width: 768px) {
   .sidebar {

@@ -1,15 +1,57 @@
 import { useState } from "react";
+import { Upload, X, Sparkles, CheckCircle } from "lucide-react";
 import "./UploadMaterial.css";
 
 function UploadMaterial() {
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [error, setError] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerated, setIsGenerated] = useState(false);
 
   const handleFileChange = (event) => {
-    const selectedFile = event.target.files[0];
+    const selectedFiles = Array.from(event.target.files);
 
-    if (selectedFile) {
-      setFile(selectedFile);
+    setError("");
+
+    const validFiles = [];
+    const rejectedFiles = [];
+
+    selectedFiles.forEach((file) => {
+      const fileSizeMB = file.size / (1024 * 1024);
+
+      if (fileSizeMB > 20) {
+        rejectedFiles.push(`${file.name} is larger than 20 MB`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (rejectedFiles.length > 0) {
+      setError(rejectedFiles.join(". "));
     }
+
+    setFiles((previousFiles) => [...previousFiles, ...validFiles]);
+
+    event.target.value = "";
+  };
+
+  const removeFile = (fileToRemove) => {
+    setFiles((previousFiles) =>
+      previousFiles.filter((file) => file !== fileToRemove),
+    );
+  };
+
+  const handleGenerateQuiz = () => {
+    if (files.length === 0) return;
+
+    setIsGenerating(true);
+    setIsGenerated(false);
+
+    // Simulate AI quiz generation
+    setTimeout(() => {
+      setIsGenerating(false);
+      setIsGenerated(true);
+    }, 3000);
   };
 
   return (
@@ -19,30 +61,102 @@ function UploadMaterial() {
         <p>Upload your study material and let Quiza turn it into a quiz.</p>
       </div>
 
-      <div className="upload-material__box">
-        <div className="upload-material__icon">↑</div>
+      {!isGenerating && !isGenerated && (
+        <>
+          <div className="upload-material__box">
+            <div className="upload-material__icon">
+              <Upload size={24} />
+            </div>
 
-        <h2>Upload your study material</h2>
+            <h2>Upload your study material</h2>
 
-        <p>Drag and drop your file here, or choose a file from your device.</p>
+            <p>Choose one or more files from your device.</p>
 
-        <label className="upload-material__button">
-          Choose File
-          <input
-            type="file"
-            accept=".pdf,.docx,.txt"
-            onChange={handleFileChange}
-          />
-        </label>
+            <label className="upload-material__button">
+              Choose Files
+              <input
+                type="file"
+                accept=".pdf,.docx,.txt"
+                multiple
+                onChange={handleFileChange}
+              />
+            </label>
 
-        {file && (
-          <p className="upload-material__filename">Selected: {file.name}</p>
-        )}
+            <span className="upload-material__formats">
+              Supported formats: PDF, DOCX, TXT · Maximum 20 MB per file
+            </span>
+          </div>
 
-        <span className="upload-material__formats">
-          Supported formats: PDF, DOCX, TXT
-        </span>
-      </div>
+          {error && <p className="upload-material__error">{error}</p>}
+
+          {files.length > 0 && (
+            <div className="upload-material__files">
+              <h3>Selected Materials</h3>
+
+              {files.map((file) => (
+                <div className="upload-material__file" key={file.name}>
+                  <div>
+                    <strong>{file.name}</strong>
+                    <span>{(file.size / (1024 * 1024)).toFixed(2)} MB</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => removeFile(file)}
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                className="upload-material__generate"
+                onClick={handleGenerateQuiz}
+              >
+                <Sparkles size={18} />
+                Generate Quiz
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {isGenerating && (
+        <div className="upload-material__generation">
+          <div className="upload-material__ai-icon">
+            <Sparkles size={30} />
+          </div>
+
+          <h2>Generating your quiz...</h2>
+
+          <p>
+            Quiza is analyzing your study material and creating questions for
+            you.
+          </p>
+
+          <div className="upload-material__loader">
+            <span></span>
+          </div>
+        </div>
+      )}
+
+      {isGenerated && (
+        <div className="upload-material__generation">
+          <div className="upload-material__success-icon">
+            <CheckCircle size={30} />
+          </div>
+
+          <h2>Quiz generated successfully!</h2>
+
+          <p>Your study material has been turned into a quiz.</p>
+
+          <button type="button" className="upload-material__generate">
+            Start Quiz
+          </button>
+        </div>
+      )}
     </section>
   );
 }

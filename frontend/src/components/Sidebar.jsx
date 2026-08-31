@@ -1,20 +1,31 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+
 import {
   LayoutDashboard,
   Upload,
   BookOpen,
   BarChart3,
   Settings,
+  LogOut,
   X,
 } from "lucide-react";
 
 import "./Sidebar.css";
 
 function Sidebar({ isOpen, onClose }) {
+  const navigate = useNavigate();
+
+  const handleSignOut = () => {
+    onClose();
+    navigate("/signin");
+  };
+
   return (
     <>
       <div
-        className={`sidebar__backdrop ${isOpen ? "sidebar__backdrop--visible" : ""}`}
+        className={`sidebar__backdrop ${
+          isOpen ? "sidebar__backdrop--visible" : ""
+        }`}
         onClick={onClose}
         aria-hidden="true"
       />
@@ -25,6 +36,7 @@ function Sidebar({ isOpen, onClose }) {
             <span>Q</span>
             <h1>Quiza</h1>
           </div>
+
           <button
             className="sidebar__close-btn"
             onClick={onClose}
@@ -101,6 +113,15 @@ function Sidebar({ isOpen, onClose }) {
               <span>Student</span>
             </div>
           </div>
+
+          <button
+            type="button"
+            className="sidebar__logout"
+            onClick={handleSignOut}
+          >
+            <LogOut size={18} />
+            <span>Sign Out</span>
+          </button>
         </div>
       </aside>
     </>
