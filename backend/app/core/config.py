@@ -31,11 +31,25 @@ class Settings(BaseSettings):
 
     ai_rate_limit_per_minute: int = 10
 
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:3000,https://quiza-urmm.onrender.com"
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        origins = []
+        for raw_origin in self.cors_origins.split(","):
+            origin = raw_origin.strip()
+            if not origin:
+                continue
+            if not (origin.startswith("http://") or origin.startswith("https://")):
+                if "localhost" in origin or "127.0.0.1" in origin:
+                    origins.append(f"http://{origin}")
+                    origins.append(f"https://{origin}")
+                else:
+                    origins.append(f"https://{origin}")
+                    origins.append(f"http://{origin}")
+            else:
+                origins.append(origin)
+        return origins
 
     @property
     def is_production(self) -> bool:
