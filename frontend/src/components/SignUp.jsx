@@ -1,9 +1,11 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import "./SignUp.css";
 
 function SignUp() {
+  const { signUp } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,34 +35,7 @@ function SignUp() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "https://quiza-urmm.onrender.com/api/v1/auth/signup",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: name,
-            email: email,
-            password: password,
-          }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail?.[0]?.msg || "Signup failed");
-      }
-
-      // Save the tokens returned by the API
-      localStorage.setItem("access_token", data.tokens.access_token);
-      localStorage.setItem("refresh_token", data.tokens.refresh_token);
-
-      // Save user information
-      localStorage.setItem("user", JSON.stringify(data.user));
-
+      await signUp(name, email, password);
       navigate("/");
     } catch (error) {
       console.error("Signup error:", error);

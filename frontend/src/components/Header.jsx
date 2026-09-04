@@ -1,12 +1,9 @@
 import { Bell, Menu } from "lucide-react";
-import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import "./Header.css";
 
 function Header({ onToggleMenu }) {
-  const [user] = useState(() => {
-    const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
+  const { user } = useAuth();
   return (
     <header className="header">
       <div className="header__left">

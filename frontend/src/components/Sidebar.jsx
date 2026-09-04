@@ -1,5 +1,4 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { useState } from "react";
 import {
   LayoutDashboard,
   Upload,
@@ -9,17 +8,16 @@ import {
   LogOut,
   X,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 import "./Sidebar.css";
 
 function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
-  const [user] = useState(() => {
-    const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
+  const { user, signOut } = useAuth();
 
   const handleSignOut = () => {
+    signOut();
     onClose();
     navigate("/signin");
   };
