@@ -80,8 +80,8 @@ function Quiz() {
 
     const currentAnswerObj = {
       question_id: question.id,
-      selected_option: selectedAnswer,
-      text_answer: selectedAnswer,
+      selected_answer: selectedAnswer,
+      time_taken_seconds: null,
     };
 
     const newAnswers = [...userAnswers, currentAnswerObj];
