@@ -5,10 +5,17 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 
-is_sqlite = settings.database_url.startswith("sqlite")
-connect_args = {"check_same_thread": False} if is_sqlite else {}
+db_url = settings.database_url
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-engine = create_engine(settings.database_url, connect_args=connect_args)
+is_sqlite = db_url.startswith("sqlite")
+connect_args = {"check_same_thread": False} if is_sqlite else {}
+engine_kwargs = {"connect_args": connect_args}
+if not is_sqlite:
+    engine_kwargs.update({"pool_pre_ping": True, "pool_recycle": 300})
+
+engine = create_engine(db_url, **engine_kwargs)
 
 if is_sqlite:
 
@@ -28,3 +35,4 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+

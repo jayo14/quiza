@@ -8,8 +8,12 @@ from app.db.base import Base
 import app.models  # noqa: F401  ensures all models are registered on Base.metadata
 import app.ai.vectorstore.models  # noqa: F401  registers the sqlite vector store table
 
+db_url = settings.database_url
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+config.set_main_option("sqlalchemy.url", db_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

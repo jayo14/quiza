@@ -20,6 +20,7 @@ dependencies = [
     "pillow>=10.3",
     "pytesseract>=0.3.10",
     "email-validator>=2.1",
+    "psycopg2-binary>=2.9",
 ]
 
 [project.optional-dependencies]
