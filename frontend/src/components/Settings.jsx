@@ -1,15 +1,22 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { API_BASE_URL } from "../config/api";
 import "./Settings.css";
 
 function Settings() {
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user, token } = useAuth();
+  const [profile, setProfile] = useState(user);
+  const [loading, setLoading] = useState(!user);
+
   useEffect(() => {
     const getProfile = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
       try {
-        const token = localStorage.getItem("access_token");
         const response = await fetch(
-          "https://quiza-urmm.onrender.com/api/v1/users/me",
+          `${API_BASE_URL}/users/me`,
           {
             method: "GET",
             headers: {
@@ -33,7 +40,7 @@ function Settings() {
     };
 
     getProfile();
-  }, []);
+  }, [token]);
   return (
     <section className="settings">
       <div className="settings__header">
@@ -51,6 +58,9 @@ function Settings() {
             id="name"
             type="text"
             value={loading ? "" : profile?.name || ""}
+            onChange={(e) =>
+              setProfile((prev) => ({ ...prev, name: e.target.value }))
+            }
           />
         </div>
 
@@ -60,6 +70,9 @@ function Settings() {
             id="email"
             type="email"
             value={loading ? "" : profile?.email || ""}
+            onChange={(e) =>
+              setProfile((prev) => ({ ...prev, email: e.target.value }))
+            }
           />
         </div>
       </div>
