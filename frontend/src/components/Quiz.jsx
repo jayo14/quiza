@@ -1,75 +1,134 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  getQuizQuestions,
+  getQuiz,
+  listQuizzes,
+  startAttempt,
+  submitAttempt,
+} from "../services/apiClient";
 import "./Quiz.css";
 
-const questions = [
-  {
-    question: "Which language is used to structure a webpage?",
-    options: ["JavaScript", "HTML", "CSS", "Python"],
-    answer: "HTML",
-  },
-  {
-    question: "Which language is used to style a webpage?",
-    options: ["HTML", "CSS", "Python", "Java"],
-    answer: "CSS",
-  },
-  {
-    question: "Which HTML tag is used to create a paragraph?",
-    options: ["<h1>", "<p>", "<div>", "<img>"],
-    answer: "<p>",
-  },
-  {
-    question: "Which CSS property changes the text color?",
-    options: ["font-size", "background", "color", "display"],
-    answer: "color",
-  },
-];
-
 function Quiz() {
+  const [searchParams] = useSearchParams();
+  const quizIdParam = searchParams.get("id");
+  const attemptIdParam = searchParams.get("attempt_id");
+
+  const [quizTitle, setQuizTitle] = useState("Quiz");
+  const [questions, setQuestions] = useState([]);
+  const [attemptId, setAttemptId] = useState(attemptIdParam || null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState("");
-  const [score, setScore] = useState(0);
   const [userAnswers, setUserAnswers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const initQuiz = async () => {
+      try {
+        setLoading(true);
+        let targetQuizId = quizIdParam;
+
+        if (!targetQuizId) {
+          const quizzes = await listQuizzes();
+          if (quizzes && quizzes.length > 0) {
+            targetQuizId = quizzes[0].id;
+          } else {
+            setError("No quizzes available. Please generate a quiz first.");
+            setLoading(false);
+            return;
+          }
+        }
+
+        const quizData = await getQuiz(targetQuizId).catch(() => null);
+        if (quizData) setQuizTitle(quizData.title || "Quiz");
+
+        const qList = await getQuizQuestions(targetQuizId);
+        setQuestions(qList || []);
+
+        let currentAttemptId = attemptIdParam;
+        if (!currentAttemptId) {
+          const attempt = await startAttempt(targetQuizId);
+          currentAttemptId = attempt.id;
+        }
+        setAttemptId(currentAttemptId);
+      } catch (err) {
+        console.error("Failed to load quiz:", err);
+        setError(err.message || "Failed to load quiz questions");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initQuiz();
+  }, [quizIdParam, attemptIdParam]);
+
   const question = questions[currentQuestion];
-  const handleAnswer = (answer) => {
-    setSelectedAnswer(answer);
+
+  const handleAnswer = (option) => {
+    setSelectedAnswer(option);
   };
-  const handleNext = () => {
-    if (!selectedAnswer) return;
-    const isCorrect = selectedAnswer === question.answer;
-    const newScore = isCorrect ? score + 1 : score;
-    const newAnswers = [
-      ...userAnswers,
-      {
-        question: question.question,
-        selectedAnswer: selectedAnswer,
-        correctAnswer: question.answer,
-        isCorrect: isCorrect,
-      },
-    ];
+
+  const handleNext = async () => {
+    if (!selectedAnswer || !question) return;
+
+    const currentAnswerObj = {
+      question_id: question.id,
+      selected_option: selectedAnswer,
+      text_answer: selectedAnswer,
+    };
+
+    const newAnswers = [...userAnswers, currentAnswerObj];
+    setUserAnswers(newAnswers);
 
     if (currentQuestion < questions.length - 1) {
-      setScore(newScore);
-      setUserAnswers(newAnswers);
       setCurrentQuestion(currentQuestion + 1);
       setSelectedAnswer("");
     } else {
-      navigate("/summary", {
-        state: {
-          score: newScore,
-          total: questions.length,
-          answers: newAnswers,
-        },
-      });
+      setSubmitting(true);
+      try {
+        const result = await submitAttempt(attemptId, newAnswers);
+        navigate(`/summary?attempt_id=${result.id}`, {
+          state: { attemptResult: result },
+        });
+      } catch (err) {
+        console.error("Failed to submit attempt:", err);
+        alert(err.message || "Failed to submit attempt");
+      } finally {
+        setSubmitting(false);
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <section className="quiz">
+        <p>Loading quiz questions...</p>
+      </section>
+    );
+  }
+
+  if (error || questions.length === 0) {
+    return (
+      <section className="quiz">
+        <p style={{ color: "#ef4444" }}>{error || "No questions found for this quiz."}</p>
+        <button className="quiz__next" onClick={() => navigate("/upload")}>
+          Generate a Quiz
+        </button>
+      </section>
+    );
+  }
+
+  const options = question.options || [];
 
   return (
     <section className="quiz">
       <div className="quiz__header">
         <div>
-          <h1>HTML & CSS Basics</h1>
+          <h1>{quizTitle}</h1>
           <p>Test your knowledge and see how much you know.</p>
         </div>
 
@@ -79,10 +138,10 @@ function Quiz() {
       </div>
 
       <div className="quiz__card">
-        <h2>{question.question}</h2>
+        <h2>{question.text}</h2>
 
         <div className="quiz__options">
-          {question.options.map((option) => (
+          {options.map((option) => (
             <button
               key={option}
               className={selectedAnswer === option ? "selected" : ""}
@@ -98,9 +157,11 @@ function Quiz() {
         <button
           className="quiz__next"
           onClick={handleNext}
-          disabled={!selectedAnswer}
+          disabled={!selectedAnswer || submitting}
         >
-          {currentQuestion === questions.length - 1
+          {submitting
+            ? "Submitting..."
+            : currentQuestion === questions.length - 1
             ? "Finish Quiz"
             : "Next Question"}
         </button>
