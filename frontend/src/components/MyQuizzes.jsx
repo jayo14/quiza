@@ -9,6 +9,7 @@ function MyQuizzes() {
   const [quizzes, setQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [quizToDelete, setQuizToDelete] = useState(null);
 
   const fetchQuizzes = async () => {
     try {
@@ -27,14 +28,20 @@ function MyQuizzes() {
     fetchQuizzes();
   }, []);
 
-  const handleDelete = async (quizId, e) => {
+  const openDeleteDialog = (quiz, e) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this quiz?")) return;
+    setQuizToDelete(quiz);
+  };
+
+  const confirmDelete = async () => {
+    if (!quizToDelete) return;
     try {
-      await deleteQuiz(quizId);
-      setQuizzes((prev) => prev.filter((q) => q.id !== quizId));
+      await deleteQuiz(quizToDelete.id);
+      setQuizzes((prev) => prev.filter((q) => q.id !== quizToDelete.id));
+      setQuizToDelete(null);
     } catch (err) {
-      alert(err.message || "Failed to delete quiz");
+      setError(err.message || "Failed to delete quiz");
+      setQuizToDelete(null);
     }
   };
 
@@ -108,7 +115,7 @@ function MyQuizzes() {
                     <Play size={15} style={{ marginRight: "4px" }} /> Start Quiz
                   </button>
                   <button
-                    onClick={(e) => handleDelete(quiz.id, e)}
+                    onClick={(e) => openDeleteDialog(quiz, e)}
                     style={{ background: "#ef4444", border: "none", borderRadius: "8px", color: "white", padding: "10px", cursor: "pointer" }}
                     title="Delete Quiz"
                   >
@@ -118,6 +125,33 @@ function MyQuizzes() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {quizToDelete && (
+        <div className="quiz-delete-modal-overlay" onClick={() => setQuizToDelete(null)}>
+          <div className="quiz-delete-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Delete Quiz</h3>
+            <p>
+              Are you sure you want to delete <strong>{quizToDelete.title}</strong>? This action cannot be undone.
+            </p>
+            <div className="quiz-delete-modal__actions">
+              <button
+                type="button"
+                className="quiz-delete-modal__btn-cancel"
+                onClick={() => setQuizToDelete(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="quiz-delete-modal__btn-delete"
+                onClick={confirmDelete}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>
