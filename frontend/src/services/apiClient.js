@@ -39,14 +39,16 @@ export async function getHealth() {
 }
 
 // --- Materials ---
-export async function uploadMaterial(file, title, onProgress) {
-  return new Promise((resolve, reject) => {
+export function uploadMaterial(file, title, onProgress) {
+  let xhrRef = null;
+  const promise = new Promise((resolve, reject) => {
     const token = localStorage.getItem("access_token");
     const formData = new FormData();
     formData.append("file", file);
     if (title) formData.append("title", title);
 
     const xhr = new XMLHttpRequest();
+    xhrRef = xhr;
     xhr.open("POST", `${API_BASE_URL}/materials`);
 
     if (token) {
@@ -86,9 +88,17 @@ export async function uploadMaterial(file, title, onProgress) {
       }
     };
 
+    xhr.onabort = () => reject(new Error("Upload cancelled"));
     xhr.onerror = () => reject(new Error("Network error during file upload"));
     xhr.send(formData);
   });
+
+  return {
+    promise,
+    cancel: () => {
+      if (xhrRef) xhrRef.abort();
+    },
+  };
 }
 
 export async function listMaterials() {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Upload, X, Sparkles, CheckCircle, Loader2 } from "lucide-react";
-import { uploadMaterial, generateQuiz } from "../services/apiClient";
+import { uploadMaterial, generateQuiz, deleteMaterial } from "../services/apiClient";
 import "./UploadMaterial.css";
 
 function UploadMaterial() {
@@ -59,7 +59,7 @@ function UploadMaterial() {
 
   const startSingleFileUpload = async (item) => {
     try {
-      const material = await uploadMaterial(
+      const task = uploadMaterial(
         item.rawFile,
         item.name,
         (percent, loaded) => {
@@ -78,6 +78,12 @@ function UploadMaterial() {
       );
 
       setFileList((prev) =>
+        prev.map((f) => (f.id === item.id ? { ...f, cancelUpload: task.cancel } : f))
+      );
+
+      const material = await task.promise;
+
+      setFileList((prev) =>
         prev.map((f) =>
           f.id === item.id
             ? {
@@ -92,8 +98,10 @@ function UploadMaterial() {
         )
       );
     } catch (err) {
-      console.error(`Upload error for ${item.name}:`, err);
-      setError(`Failed to upload ${item.name}: ${err.message}`);
+      if (err.message !== "Upload cancelled") {
+        console.error(`Upload error for ${item.name}:`, err);
+        setError(`Failed to upload ${item.name}: ${err.message}`);
+      }
       setFileList((prev) =>
         prev.map((f) =>
           f.id === item.id
@@ -109,7 +117,20 @@ function UploadMaterial() {
     }
   };
 
-  const removeFile = (idToRemove) => {
+  const removeFile = async (idToRemove) => {
+    const item = fileList.find((f) => f.id === idToRemove);
+    if (item) {
+      if (item.cancelUpload && item.uploading) {
+        item.cancelUpload();
+      }
+      if (item.materialId) {
+        try {
+          await deleteMaterial(item.materialId);
+        } catch (err) {
+          console.error("Failed to delete cancelled material:", err);
+        }
+      }
+    }
     setFileList((prev) => prev.filter((item) => item.id !== idToRemove));
   };
 
