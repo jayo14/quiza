@@ -71,7 +71,7 @@ async def generate_quiz(
     except Exception as exc:
         db.rollback()
         quiz.status = QuizStatus.FAILED
-        quiz.generation_error = str(exc)
+        quiz.generation_error = str(exc)[:1000]
         db.add(quiz)
         db.commit()
         raise

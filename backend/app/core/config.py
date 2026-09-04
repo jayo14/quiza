@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     password_reset_token_expire_minutes: int = 30
 
     gemini_api_key: str | None = None
-    gemini_chat_model: str = "gemini-2.5-flash"
+    gemini_chat_model: str = "gemini-3.6-flash"
     gemini_embedding_model: str = "gemini-embedding-001"
 
     storage_backend: str = "local"

@@ -53,18 +53,19 @@ class PgVectorStore(VectorStore):
         material_id: str | None = None,
     ) -> list[SearchResult]:
         material_filter = "AND material_id = :material_id" if material_id else ""
+        vector_str = f"[{','.join(str(f) for f in query_embedding)}]"
         rows = self._db.execute(
             text(
                 f"""
-                SELECT chunk_id, 1 - (embedding <=> :query_embedding) AS score
+                SELECT chunk_id, 1 - (embedding <=> CAST(:query_embedding AS vector)) AS score
                 FROM chunk_embeddings_vector
                 WHERE user_id = :user_id {material_filter}
-                ORDER BY embedding <=> :query_embedding
+                ORDER BY embedding <=> CAST(:query_embedding AS vector)
                 LIMIT :top_k
                 """
             ),
             {
-                "query_embedding": query_embedding,
+                "query_embedding": vector_str,
                 "user_id": user_id,
                 "material_id": material_id,
                 "top_k": top_k,
