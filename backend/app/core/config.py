@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     gemini_api_key: str | None = None
     gemini_chat_model: str = "gemini-2.5-flash"
-    gemini_embedding_model: str = "text-embedding-004"
+    gemini_embedding_model: str = "gemini-embedding-001"
 
     storage_backend: str = "local"
     storage_dir: str = "./storage"

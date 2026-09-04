@@ -6,6 +6,8 @@ from app.core.config import settings
 from app.core.exceptions import AIServiceError
 
 _GEMINI_EMBEDDING_DIMENSIONS = {
+    "gemini-embedding-001": 3072,
+    "gemini-embedding-2": 3072,
     "text-embedding-004": 768,
     "embedding-001": 768,
 }
@@ -18,7 +20,7 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
 
     @property
     def dimensions(self) -> int:
-        return _GEMINI_EMBEDDING_DIMENSIONS.get(self._model, 768)
+        return _GEMINI_EMBEDDING_DIMENSIONS.get(self._model, 3072)
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
@@ -31,8 +33,14 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
                     model=self._model,
                     contents=text,
                 )
-                if response.embedding and response.embedding.values:
-                    embeddings.append(response.embedding.values)
+                values = None
+                if hasattr(response, "embedding") and response.embedding and getattr(response.embedding, "values", None):
+                    values = response.embedding.values
+                elif hasattr(response, "embeddings") and response.embeddings and len(response.embeddings) > 0:
+                    values = response.embeddings[0].values
+
+                if values:
+                    embeddings.append(list(values))
                 else:
                     raise AIServiceError("The AI provider returned empty embeddings.")
             return embeddings
