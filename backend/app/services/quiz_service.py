@@ -7,6 +7,7 @@ from app.models.enums import Difficulty, MaterialStatus, QuestionType, QuizStatu
 from app.models.question import Question
 from app.models.quiz import Quiz
 from app.models.user import User
+from app.schemas.quiz import QuizRead
 from app.services import material_service
 
 
@@ -78,7 +79,13 @@ async def generate_quiz(
 
 
 def list_quizzes(db: Session, *, user: User) -> list[Quiz]:
-    stmt = select(Quiz).where(Quiz.user_id == user.id).order_by(Quiz.created_at.desc())
+    from sqlalchemy.orm import selectinload
+    stmt = (
+        select(Quiz)
+        .options(selectinload(Quiz.questions))
+        .where(Quiz.user_id == user.id)
+        .order_by(Quiz.created_at.desc())
+    )
     return list(db.scalars(stmt).all())
 
 

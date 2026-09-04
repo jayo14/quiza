@@ -3,6 +3,8 @@ import tempfile
 
 _db_fd, _db_path = tempfile.mkstemp(suffix=".db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_db_path}"
+os.environ["STORAGE_BACKEND"] = "local"
+os.environ["VECTOR_STORE_BACKEND"] = "sqlite"
 os.environ["JWT_SECRET_KEY"] = "test-only-secret"
 os.environ["OPENAI_API_KEY"] = "sk-test-not-real"
 os.environ["GEMINI_API_KEY"] = "fake-gemini-key-for-testing"

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.models.enums import Difficulty, QuestionType, QuizStatus
 
@@ -38,6 +38,8 @@ class QuestionWithAnswer(QuestionPublic):
     source_reference: str | None
 
 
+from pydantic import BaseModel, ConfigDict, Field, computed_field
+
 class QuizRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -49,6 +51,12 @@ class QuizRead(BaseModel):
     generation_error: str | None
     created_at: datetime
     updated_at: datetime
+
+    @computed_field
+    @property
+    def question_count(self) -> int:
+        questions = getattr(self, "questions", None)
+        return len(questions) if questions is not None else 0
 
 
 class QuizDetail(QuizRead):
