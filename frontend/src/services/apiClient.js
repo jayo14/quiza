@@ -13,6 +13,14 @@ async function handleResponse(response) {
     return null;
   }
   const data = await response.json().catch(() => ({}));
+  if (response.status === 401) {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user");
+    if (window.location.pathname !== "/signin") {
+      window.location.href = "/signin";
+    }
+  }
   if (!response.ok) {
     const errorMsg =
       typeof data.detail === "string"
