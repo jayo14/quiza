@@ -37,4 +37,8 @@ def get_storage_backend() -> StorageBackend:
 
     if settings.storage_backend == "local":
         return LocalStorageBackend(settings.storage_dir)
+    if settings.storage_backend == "supabase":
+        from app.storage.supabase import SupabaseStorageBackend
+
+        return SupabaseStorageBackend()
     raise ValueError(f"Unsupported storage backend: {settings.storage_backend}")

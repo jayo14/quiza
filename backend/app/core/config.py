@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     storage_dir: str = "./storage"
     max_upload_size_mb: int = 25
 
+    supabase_url: str | None = None
+    supabase_key: str | None = None
+    supabase_storage_bucket: str = "materials"
+
     vector_store_backend: str = "sqlite"
 
     ai_rate_limit_per_minute: int = 10

@@ -21,6 +21,8 @@ dependencies = [
     "pytesseract>=0.3.10",
     "email-validator>=2.1",
     "psycopg2-binary>=2.9",
+    "pgvector>=0.2.5",
+    "supabase>=2.0.0",
 ]
 
 [project.optional-dependencies]
