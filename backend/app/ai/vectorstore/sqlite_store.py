@@ -48,8 +48,17 @@ class SQLiteVectorStore(VectorStore):
         scored: list[SearchResult] = []
         for candidate in candidates:
             candidate_vec = np.array(candidate.embedding, dtype=np.float32)
-            candidate_norm = np.linalg.norm(candidate_vec) or 1e-9
-            similarity = float(np.dot(query_vec, candidate_vec) / (query_norm * candidate_norm))
+            if query_vec.shape != candidate_vec.shape:
+                min_dim = min(len(query_vec), len(candidate_vec))
+                q_v = query_vec[:min_dim]
+                c_v = candidate_vec[:min_dim]
+            else:
+                q_v = query_vec
+                c_v = candidate_vec
+
+            q_norm = np.linalg.norm(q_v) or 1e-9
+            c_norm = np.linalg.norm(c_v) or 1e-9
+            similarity = float(np.dot(q_v, c_v) / (q_norm * c_norm))
             scored.append(SearchResult(chunk_id=candidate.chunk_id, score=similarity))
 
         scored.sort(key=lambda r: r.score, reverse=True)
