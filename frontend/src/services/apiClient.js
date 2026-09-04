@@ -31,20 +31,56 @@ export async function getHealth() {
 }
 
 // --- Materials ---
-export async function uploadMaterial(file, title) {
-  const token = localStorage.getItem("access_token");
-  const formData = new FormData();
-  formData.append("file", file);
-  if (title) formData.append("title", title);
+export async function uploadMaterial(file, title, onProgress) {
+  return new Promise((resolve, reject) => {
+    const token = localStorage.getItem("access_token");
+    const formData = new FormData();
+    formData.append("file", file);
+    if (title) formData.append("title", title);
 
-  const response = await fetch(`${API_BASE_URL}/materials`, {
-    method: "POST",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: formData,
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_BASE_URL}/materials`);
+
+    if (token) {
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    }
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round(
+            (event.loaded / event.total) * 100
+          );
+          onProgress(percentComplete, event.loaded, event.total);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          resolve(data);
+        } catch {
+          resolve({});
+        }
+      } else {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          const errorMsg =
+            typeof data.detail === "string"
+              ? data.detail
+              : data.detail?.[0]?.msg || "Upload failed";
+          reject(new Error(errorMsg));
+        } catch {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during file upload"));
+    xhr.send(formData);
   });
-  return handleResponse(response);
 }
 
 export async function listMaterials() {
