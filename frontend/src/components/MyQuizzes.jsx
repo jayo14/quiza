@@ -1,9 +1,52 @@
-import "./MyQuizzes.css";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Plus, Trash2, Play } from "lucide-react";
+import { listQuizzes, deleteQuiz, startAttempt } from "../services/apiClient";
+import "./MyQuizzes.css";
 
 function MyQuizzes() {
   const navigate = useNavigate();
+  const [quizzes, setQuizzes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchQuizzes = async () => {
+    try {
+      setLoading(true);
+      const data = await listQuizzes();
+      setQuizzes(data || []);
+    } catch (err) {
+      console.error("Failed to list quizzes:", err);
+      setError(err.message || "Failed to load quizzes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchQuizzes();
+  }, []);
+
+  const handleDelete = async (quizId, e) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this quiz?")) return;
+    try {
+      await deleteQuiz(quizId);
+      setQuizzes((prev) => prev.filter((q) => q.id !== quizId));
+    } catch (err) {
+      alert(err.message || "Failed to delete quiz");
+    }
+  };
+
+  const handleStartAttempt = async (quizId) => {
+    try {
+      const attempt = await startAttempt(quizId);
+      navigate(`/quiz?id=${quizId}&attempt_id=${attempt.id}`);
+    } catch (err) {
+      navigate(`/quiz?id=${quizId}`);
+    }
+  };
+
   return (
     <section className="my-quizzes">
       <div className="my-quizzes__header">
@@ -21,63 +64,41 @@ function MyQuizzes() {
         </button>
       </div>
 
-      <div className="my-quizzes__list">
-        <div className="my-quiz">
-          <div className="my-quiz__info">
-            <h3>HTML & CSS Basics</h3>
-            <p>Completed yesterday</p>
-          </div>
-
-          <div className="my-quiz__score">
-            <span>92%</span>
-            <small>Score</small>
-          </div>
-
-          <button onClick={() => navigate("/quiz")}>Start Quiz</button>
+      {loading ? (
+        <p>Loading quizzes...</p>
+      ) : error ? (
+        <p style={{ color: "#ff4d4f" }}>{error}</p>
+      ) : quizzes.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "40px 0" }}>
+          <p>No quizzes found. Upload study materials to generate your first quiz!</p>
         </div>
+      ) : (
+        <div className="my-quizzes__list">
+          {quizzes.map((quiz) => (
+            <div className="my-quiz" key={quiz.id}>
+              <div className="my-quiz__info">
+                <h3>{quiz.title || "Untitled Quiz"}</h3>
+                <p>
+                  {quiz.question_count || 0} Questions · Difficulty: {quiz.difficulty || "medium"}
+                </p>
+              </div>
 
-        <div className="my-quiz">
-          <div className="my-quiz__info">
-            <h3>JavaScript Fundamentals</h3>
-            <p>Completed 2 days ago</p>
-          </div>
-
-          <div className="my-quiz__score">
-            <span>85%</span>
-            <small>Score</small>
-          </div>
-
-          <button onClick={() => navigate("/quiz")}>Start Quiz</button>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <button onClick={() => handleStartAttempt(quiz.id)}>
+                  <Play size={15} style={{ marginRight: "4px" }} /> Start Quiz
+                </button>
+                <button
+                  onClick={(e) => handleDelete(quiz.id, e)}
+                  style={{ background: "#ef4444", border: "none", borderRadius: "8px", color: "white", padding: "10px", cursor: "pointer" }}
+                  title="Delete Quiz"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-
-        <div className="my-quiz">
-          <div className="my-quiz__info">
-            <h3>React Basics</h3>
-            <p>Completed 4 days ago</p>
-          </div>
-
-          <div className="my-quiz__score">
-            <span>78%</span>
-            <small>Score</small>
-          </div>
-
-          <button onClick={() => navigate("/quiz")}>Start Quiz</button>
-        </div>
-
-        <div className="my-quiz">
-          <div className="my-quiz__info">
-            <h3>Computer Science Basics</h3>
-            <p>Completed 1 week ago</p>
-          </div>
-
-          <div className="my-quiz__score">
-            <span>88%</span>
-            <small>Score</small>
-          </div>
-
-          <button onClick={() => navigate("/quiz")}>Start Quiz</button>
-        </div>
-      </div>
+      )}
     </section>
   );
 }
