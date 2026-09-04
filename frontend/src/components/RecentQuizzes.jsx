@@ -1,7 +1,10 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "./RecentQuizzes.css";
 
-function RecentQuizzes() {
+function RecentQuizzes({ quizzes = [] }) {
+  const navigate = useNavigate();
+  const recentItems = quizzes.slice(0, 4);
+
   return (
     <section className="recent-quizzes">
       <div className="recent-quizzes__header">
@@ -15,43 +18,32 @@ function RecentQuizzes() {
         </Link>
       </div>
 
-      <div className="recent-quizzes__list">
-        <div className="recent-quiz">
-          <div className="recent-quiz__info">
-            <h3>HTML & CSS Basics</h3>
-            <p>Completed yesterday</p>
-          </div>
+      {recentItems.length === 0 ? (
+        <p style={{ color: "#888", padding: "16px 0" }}>
+          No recent quizzes. Create your first quiz by uploading study materials!
+        </p>
+      ) : (
+        <div className="recent-quizzes__list">
+          {recentItems.map((quiz) => (
+            <div
+              className="recent-quiz"
+              key={quiz.id}
+              onClick={() => navigate(`/quiz?id=${quiz.id}`)}
+              style={{ cursor: "pointer" }}
+            >
+              <div className="recent-quiz__info">
+                <h3>{quiz.title || "Untitled Quiz"}</h3>
+                <p>{quiz.question_count || 0} Questions · {quiz.difficulty || "medium"}</p>
+              </div>
 
-          <div className="recent-quiz__score">
-            <span>92%</span>
-            <small>Score</small>
-          </div>
+              <div className="recent-quiz__score">
+                <span>Start</span>
+                <small>Quiz</small>
+              </div>
+            </div>
+          ))}
         </div>
-
-        <div className="recent-quiz">
-          <div className="recent-quiz__info">
-            <h3>JavaScript Fundamentals</h3>
-            <p>Completed 2 days ago</p>
-          </div>
-
-          <div className="recent-quiz__score">
-            <span>85%</span>
-            <small>Score</small>
-          </div>
-        </div>
-
-        <div className="recent-quiz">
-          <div className="recent-quiz__info">
-            <h3>React Basics</h3>
-            <p>Completed 4 days ago</p>
-          </div>
-
-          <div className="recent-quiz__score">
-            <span>78%</span>
-            <small>Score</small>
-          </div>
-        </div>
-      </div>
+      )}
     </section>
   );
 }
