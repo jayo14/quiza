@@ -74,29 +74,50 @@ function MyQuizzes() {
         </div>
       ) : (
         <div className="my-quizzes__list">
-          {quizzes.map((quiz) => (
-            <div className="my-quiz" key={quiz.id}>
-              <div className="my-quiz__info">
-                <h3>{quiz.title || "Untitled Quiz"}</h3>
-                <p>
-                  {quiz.question_count || 0} Questions · Difficulty: {quiz.difficulty || "medium"}
-                </p>
-              </div>
+          {quizzes.map((quiz) => {
+            const isReady = quiz.status === "ready" || !quiz.status;
+            return (
+              <div className="my-quiz" key={quiz.id}>
+                <div className="my-quiz__info">
+                  <h3>{quiz.title || "Untitled Quiz"}</h3>
+                  <p>
+                    {quiz.question_count || 0} Questions · Difficulty: {quiz.difficulty || "medium"}
+                    {quiz.status && quiz.status !== "ready" && (
+                      <span
+                        style={{
+                          marginLeft: "8px",
+                          padding: "2px 8px",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          background: quiz.status === "failed" ? "#fee2e2" : "#e0f2fe",
+                          color: quiz.status === "failed" ? "#ef4444" : "#0284c7",
+                        }}
+                      >
+                        {quiz.status.toUpperCase()}
+                      </span>
+                    )}
+                  </p>
+                </div>
 
-              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                <button onClick={() => handleStartAttempt(quiz.id)}>
-                  <Play size={15} style={{ marginRight: "4px" }} /> Start Quiz
-                </button>
-                <button
-                  onClick={(e) => handleDelete(quiz.id, e)}
-                  style={{ background: "#ef4444", border: "none", borderRadius: "8px", color: "white", padding: "10px", cursor: "pointer" }}
-                  title="Delete Quiz"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <button
+                    onClick={() => isReady && handleStartAttempt(quiz.id)}
+                    disabled={!isReady}
+                    style={{ opacity: isReady ? 1 : 0.5, cursor: isReady ? "pointer" : "not-allowed" }}
+                  >
+                    <Play size={15} style={{ marginRight: "4px" }} /> Start Quiz
+                  </button>
+                  <button
+                    onClick={(e) => handleDelete(quiz.id, e)}
+                    style={{ background: "#ef4444", border: "none", borderRadius: "8px", color: "white", padding: "10px", cursor: "pointer" }}
+                    title="Delete Quiz"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>

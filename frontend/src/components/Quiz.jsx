@@ -34,10 +34,13 @@ function Quiz() {
 
         if (!targetQuizId) {
           const quizzes = await listQuizzes();
-          if (quizzes && quizzes.length > 0) {
-            targetQuizId = quizzes[0].id;
+          const readyQuizzes = (quizzes || []).filter(
+            (q) => q.status === "ready" || !q.status
+          );
+          if (readyQuizzes.length > 0) {
+            targetQuizId = readyQuizzes[0].id;
           } else {
-            setError("No quizzes available. Please generate a quiz first.");
+            setError("No ready quizzes available. Please generate a quiz first.");
             setLoading(false);
             return;
           }
