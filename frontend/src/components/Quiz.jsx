@@ -141,7 +141,7 @@ function Quiz() {
       </div>
 
       <div className="quiz__card">
-        <h2>{question.text}</h2>
+        <h2>{question.question_text || question.question || question.text}</h2>
 
         <div className="quiz__options">
           {options.map((option) => (
