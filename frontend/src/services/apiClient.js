@@ -119,6 +119,7 @@ export async function deleteMaterial(materialId) {
 // --- Quizzes ---
 export async function generateQuiz({
   material_id,
+  material_ids,
   number_of_questions = 5,
   difficulty = "medium",
   question_types = ["multiple_choice"],
@@ -128,6 +129,7 @@ export async function generateQuiz({
     headers: getAuthHeaders(),
     body: JSON.stringify({
       material_id,
+      material_ids,
       number_of_questions,
       difficulty,
       question_types,

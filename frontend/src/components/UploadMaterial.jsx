@@ -146,11 +146,16 @@ function UploadMaterial() {
     setError("");
 
     try {
-      const uploadedMaterialId = fileList[0].materialId;
+      const uploadedMaterialIds = fileList
+        .map((f) => f.materialId)
+        .filter(Boolean);
+
+      const targetCount = uploadedMaterialIds.length > 1 ? 10 : 5;
 
       const quiz = await generateQuiz({
-        material_id: uploadedMaterialId,
-        number_of_questions: 5,
+        material_id: uploadedMaterialIds[0],
+        material_ids: uploadedMaterialIds,
+        number_of_questions: targetCount,
         difficulty: "medium",
         question_types: ["multiple_choice"],
       });

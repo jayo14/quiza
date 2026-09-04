@@ -6,7 +6,8 @@ from app.models.enums import Difficulty, QuestionType, QuizStatus
 
 
 class QuizGenerateRequest(BaseModel):
-    material_id: str
+    material_id: str | None = None
+    material_ids: list[str] | None = None
     number_of_questions: int = Field(default=10, ge=1, le=50)
     difficulty: Difficulty = Difficulty.MEDIUM
     question_types: list[QuestionType] = Field(

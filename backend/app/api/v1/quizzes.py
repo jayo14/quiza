@@ -23,6 +23,7 @@ async def generate_quiz(
         db,
         user=current_user,
         material_id=payload.material_id,
+        material_ids=payload.material_ids,
         number_of_questions=payload.number_of_questions,
         difficulty=payload.difficulty,
         question_types=payload.question_types,

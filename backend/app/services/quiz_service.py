@@ -15,21 +15,32 @@ async def generate_quiz(
     db: Session,
     *,
     user: User,
-    material_id: str,
-    number_of_questions: int,
-    difficulty: Difficulty,
-    question_types: list[QuestionType],
+    material_id: str | None = None,
+    material_ids: list[str] | None = None,
+    number_of_questions: int = 5,
+    difficulty: Difficulty = Difficulty.MEDIUM,
+    question_types: list[QuestionType] | None = None,
 ) -> Quiz:
-    material = material_service.get_owned_material(db, user=user, material_id=material_id)
-    if material.status != MaterialStatus.READY:
+    target_ids = list(set(filter(None, (material_ids or []) + ([material_id] if material_id else []))))
+    if not target_ids:
+        raise ValidationFailedError("At least one material_id must be provided for quiz generation.")
+
+    materials = [material_service.get_owned_material(db, user=user, material_id=mid) for mid in target_ids]
+    unready = [m.filename for m in materials if m.status != MaterialStatus.READY]
+    if unready:
         raise ValidationFailedError(
-            f"Material is not ready for quiz generation yet (status: {material.status.value})."
+            f"Study material is still processing: {', '.join(unready)}. Please wait for ingestion to finish."
         )
+
+    # Dynamic rules: Single material -> 5 questions; Multiple materials -> capped at 10 questions.
+    effective_count = min(10, number_of_questions) if len(materials) > 1 else min(5, number_of_questions)
+    primary_material = materials[0]
+    title = f"Quiz: {primary_material.title}" if len(materials) == 1 else f"Multi-Material Quiz ({len(materials)} sources)"
 
     quiz = Quiz(
         user_id=user.id,
-        material_id=material.id,
-        title=f"Quiz: {material.title}",
+        material_id=primary_material.id,
+        title=title,
         difficulty=difficulty,
         status=QuizStatus.GENERATING,
     )
@@ -37,14 +48,17 @@ async def generate_quiz(
     db.commit()
     db.refresh(quiz)
 
+    q_types = question_types or [QuestionType.MULTIPLE_CHOICE]
+
     try:
+        # If multiple materials, search vector store across primary material (or iterate context)
         generated = await generate_quiz_questions(
             db,
             user_id=user.id,
-            material_id=material.id,
-            number_of_questions=number_of_questions,
+            material_id=primary_material.id,
+            number_of_questions=effective_count,
             difficulty=difficulty,
-            question_types=question_types,
+            question_types=q_types,
         )
         db.add_all(
             [

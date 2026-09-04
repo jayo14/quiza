@@ -33,7 +33,7 @@ function RecentQuizzes({ quizzes = [] }) {
             >
               <div className="recent-quiz__info">
                 <h3>{quiz.title || "Untitled Quiz"}</h3>
-                <p>{quiz.question_count || 0} Questions · {quiz.difficulty || "medium"}</p>
+                <p>{quiz.question_count ?? quiz.questions?.length ?? 0} Questions · {quiz.difficulty || "medium"}</p>
               </div>
 
               <div className="recent-quiz__score">
