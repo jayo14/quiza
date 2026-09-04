@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 
 import Sidebar from "./components/Sidebar";
@@ -17,51 +17,12 @@ import SignUp from "./components/SignUp";
 import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
 
+import { AuthProvider } from "./context/AuthContext";
+
 import "./App.css";
 
 function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const token = localStorage.getItem("access_token");
-
-      // No token means nobody is logged in
-      if (!token) {
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          "https://quiza-urmm.onrender.com/api/v1/auth/me",
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error("Session expired");
-        }
-
-        const user = await response.json();
-
-        // Update the saved user information
-        localStorage.setItem("user", JSON.stringify(user));
-      } catch (error) {
-        console.error("Authentication check failed:", error);
-
-        // Remove invalid login information
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("user");
-      }
-    };
-
-    getCurrentUser();
-  }, []);
 
   return (
     <div className="app">
@@ -78,27 +39,29 @@ function DashboardLayout() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Auth Pages (Standalone Full-Screen) */}
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Auth Pages (Standalone Full-Screen) */}
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* In-App Dashboard Pages */}
-        <Route element={<DashboardLayout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/upload" element={<UploadMaterial />} />
-          <Route path="/quizzes" element={<MyQuizzes />} />
-          <Route path="/quiz" element={<Quiz />} />
-          <Route path="/summary" element={<Summary />} />
-          <Route path="/progress" element={<Progress />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/review" element={<ReviewAnswers />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+          {/* In-App Dashboard Pages */}
+          <Route element={<DashboardLayout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/upload" element={<UploadMaterial />} />
+            <Route path="/quizzes" element={<MyQuizzes />} />
+            <Route path="/quiz" element={<Quiz />} />
+            <Route path="/summary" element={<Summary />} />
+            <Route path="/progress" element={<Progress />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/review" element={<ReviewAnswers />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
