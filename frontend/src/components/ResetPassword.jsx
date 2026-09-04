@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Lock,
@@ -8,6 +8,7 @@ import {
   ArrowRight,
   ArrowLeft,
 } from "lucide-react";
+import { API_BASE_URL } from "../config/api";
 import "./ResetPassword.css";
 
 function ResetPassword() {
@@ -33,7 +34,7 @@ function ResetPassword() {
 
     try {
       const response = await fetch(
-        "https://quiza-urmm.onrender.com/api/v1/auth/reset-password",
+        `${API_BASE_URL}/auth/reset-password`,
         {
           method: "POST",
           headers: {

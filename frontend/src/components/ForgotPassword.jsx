@@ -1,6 +1,7 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Mail, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { API_BASE_URL } from "../config/api";
 import "./ForgotPassword.css";
 
 function ForgotPassword() {
@@ -14,7 +15,7 @@ function ForgotPassword() {
 
     try {
       const response = await fetch(
-        "https://quiza-urmm.onrender.com/api/v1/auth/forgot-password",
+        `${API_BASE_URL}/auth/forgot-password`,
         {
           method: "POST",
           headers: {
