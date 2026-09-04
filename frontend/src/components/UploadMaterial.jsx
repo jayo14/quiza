@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Upload, X, Sparkles, CheckCircle } from "lucide-react";
+import { uploadMaterial, generateQuiz } from "../services/apiClient";
 import "./UploadMaterial.css";
 
 function UploadMaterial() {
@@ -7,6 +9,9 @@ function UploadMaterial() {
   const [error, setError] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGenerated, setIsGenerated] = useState(false);
+  const [generatedQuizId, setGeneratedQuizId] = useState(null);
+  const navigate = useNavigate();
+
   const handleFileChange = (event) => {
     const selectedFiles = Array.from(event.target.files);
 
@@ -48,34 +53,31 @@ function UploadMaterial() {
     setError("");
 
     try {
-      const formData = new FormData();
-      formData.append("file", files[0]);
+      const fileToUpload = files[0];
+      const material = await uploadMaterial(fileToUpload, fileToUpload.name);
 
-      const response = await fetch(
-        "https://quiza-urmm.onrender.com/api/v1/materials",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-          body: formData,
-        },
-      );
+      const quiz = await generateQuiz({
+        material_id: material.id,
+        number_of_questions: 5,
+        difficulty: "medium",
+        question_types: ["multiple_choice"],
+      });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || "Failed to upload material");
-      }
-
-      console.log("Material uploaded:", data);
-
-      setIsGenerating(false);
+      setGeneratedQuizId(quiz.id);
       setIsGenerated(true);
-    } catch (error) {
-      console.error("Upload error:", error);
-      setError(error.message);
+    } catch (err) {
+      console.error("Quiz generation failed:", err);
+      setError(err.message || "Failed to generate quiz. Please try again.");
+    } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleStartQuiz = () => {
+    if (generatedQuizId) {
+      navigate(`/quiz?id=${generatedQuizId}`);
+    } else {
+      navigate("/quizzes");
     }
   };
 
@@ -177,7 +179,11 @@ function UploadMaterial() {
 
           <p>Your study material has been turned into a quiz.</p>
 
-          <button type="button" className="upload-material__generate">
+          <button
+            type="button"
+            className="upload-material__generate"
+            onClick={handleStartQuiz}
+          >
             Start Quiz
           </button>
         </div>
