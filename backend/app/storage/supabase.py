@@ -8,11 +8,11 @@ class SupabaseStorageBackend(StorageBackend):
     ) -> None:
         from supabase import create_client
 
-        supa_url = url or settings.supabase_url
-        supa_key = key or settings.supabase_key
+        supa_url = url or settings.effective_supabase_url
+        supa_key = key or settings.effective_supabase_key
         if not supa_url or not supa_key:
             raise ValueError(
-                "SUPABASE_URL and SUPABASE_KEY must be set when using Supabase storage backend."
+                "SUPABASE_URL (or SUPBASE_URL) and SUPABASE_KEY (or SUPABASE_ANON_KEY) must be set when using Supabase storage backend."
             )
         self._client = create_client(supa_url, supa_key)
         self._bucket_name = bucket_name or settings.supabase_storage_bucket

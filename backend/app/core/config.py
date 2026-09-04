@@ -28,8 +28,18 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 25
 
     supabase_url: str | None = None
+    supbase_url: str | None = None
     supabase_key: str | None = None
+    supabase_anon_key: str | None = None
     supabase_storage_bucket: str = "materials"
+
+    @property
+    def effective_supabase_url(self) -> str | None:
+        return self.supabase_url or self.supbase_url
+
+    @property
+    def effective_supabase_key(self) -> str | None:
+        return self.supabase_key or self.supabase_anon_key
 
     vector_store_backend: str = "sqlite"
 
