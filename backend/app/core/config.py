@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     gemini_chat_model: str = "gemini-3.6-flash"
     gemini_embedding_model: str = "gemini-embedding-001"
 
-    storage_backend: str = "local"
+    storage_backend: str = "supabase"
     storage_dir: str = "./storage"
     max_upload_size_mb: int = 25
 
@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     def effective_supabase_key(self) -> str | None:
         return self.supabase_key or self.supabase_anon_key
 
-    vector_store_backend: str = "sqlite"
+    vector_store_backend: str = "pgvector"
 
     ai_rate_limit_per_minute: int = 10
 
