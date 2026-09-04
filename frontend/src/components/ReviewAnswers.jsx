@@ -43,7 +43,7 @@ function ReviewAnswers() {
           {answers.map((item, index) => {
             const isCorrect = item.is_correct ?? item.isCorrect;
             const questionText = item.question_text || item.question || `Question ${index + 1}`;
-            const selected = item.selected_option || item.selectedAnswer || item.text_answer || "N/A";
+            const selected = item.selected_answer || item.selected_option || item.selectedAnswer || item.text_answer || "N/A";
             const correct = item.correct_answer || item.correctAnswer || "N/A";
 
             return (
