@@ -10,9 +10,8 @@ from app.models.enums import AttemptStatus, Severity
 from app.models.question import Question
 from app.models.weakness import Weakness
 
-# A weakness is only declared once there's enough evidence (question volume) AND
-# accuracy is meaningfully below the pass bar — one wrong answer never qualifies.
-MIN_QUESTIONS_FOR_WEAKNESS = 3
+# A weakness is declared once at least 2 questions are answered on a topic below accuracy threshold.
+MIN_QUESTIONS_FOR_WEAKNESS = 2
 WEAKNESS_ACCURACY_THRESHOLD = 0.6
 HIGH_SEVERITY_ACCURACY = 0.4
 

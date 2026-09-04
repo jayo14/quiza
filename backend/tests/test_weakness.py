@@ -65,8 +65,8 @@ def test_low_accuracy_with_enough_volume_creates_a_weakness(client, signup):
 
 def test_a_single_mistake_does_not_create_a_weakness(client, signup):
     headers, _ = signup()
-    # Only 2 questions total: below MIN_QUESTIONS_FOR_WEAKNESS even if both are wrong.
-    submit, _ = _setup_and_submit(client, headers, correct_answers=[False, False])
+    # Only 1 question total: below MIN_QUESTIONS_FOR_WEAKNESS.
+    submit, _ = _setup_and_submit(client, headers, correct_answers=[False])
     assert submit.status_code == 200
 
     weaknesses = client.get("/api/v1/analytics/weaknesses", headers=headers).json()

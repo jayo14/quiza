@@ -18,3 +18,12 @@ class WeaknessRead(BaseModel):
     confidence: float
     severity: Severity
     last_seen: datetime | None
+
+
+class TopicMasteryRead(BaseModel):
+    topic: str
+    question_count: int
+    mistake_count: int
+    attempt_count: int
+    accuracy: float
+    status: str

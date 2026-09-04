@@ -216,6 +216,13 @@ export async function listWeaknesses() {
   return handleResponse(response);
 }
 
+export async function listTopicMastery() {
+  const response = await fetch(`${API_BASE_URL}/analytics/topics`, {
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+}
+
 // --- Practice ---
 export async function generatePractice({
   material_id,

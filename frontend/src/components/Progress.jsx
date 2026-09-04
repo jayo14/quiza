@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sparkles } from "lucide-react";
+import { Sparkles, AlertTriangle, CheckCircle2, Target } from "lucide-react";
 import {
   listWeaknesses,
+  listTopicMastery,
   listAttempts,
   generatePractice,
   listMaterials,
@@ -12,6 +13,7 @@ import "./Progress.css";
 function Progress() {
   const navigate = useNavigate();
   const [weaknesses, setWeaknesses] = useState([]);
+  const [topics, setTopics] = useState([]);
   const [attempts, setAttempts] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,12 +23,14 @@ function Progress() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [wList, aList, mList] = await Promise.all([
+        const [wList, tList, aList, mList] = await Promise.all([
           listWeaknesses().catch(() => []),
+          listTopicMastery().catch(() => []),
           listAttempts().catch(() => []),
           listMaterials().catch(() => []),
         ]);
         setWeaknesses(wList || []);
+        setTopics(tList || []);
         setAttempts(aList || []);
         setMaterials(mList || []);
       } catch (err) {
@@ -104,23 +108,32 @@ function Progress() {
             </div>
           </div>
 
-          <section className="progress__topics">
-            <h2>Identified Weaknesses & Topic Mastery</h2>
+          {weaknesses.length > 0 && (
+            <section className="progress__topics" style={{ marginBottom: "32px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+                <AlertTriangle size={20} color="#ef4444" />
+                <h2 style={{ margin: 0 }}>Identified Weakness Areas</h2>
+              </div>
 
-            {weaknesses.length === 0 ? (
-              <p style={{ padding: "16px 0", color: "#888" }}>
-                No weakness areas identified yet. Take more quizzes to generate topic analytics!
-              </p>
-            ) : (
-              weaknesses.map((item) => {
-                const mastery = Math.max(0, Math.round(100 - (item.weakness_score || 0) * 100));
+              {weaknesses.map((item) => {
+                const accPercent = Math.round((item.accuracy || 0) * 100);
                 return (
-                  <div className="progress__topic" key={item.id || item.topic}>
+                  <div className="progress__topic" key={item.id || item.topic} style={{ borderLeft: "4px solid #ef4444" }}>
                     <div className="progress__topic-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
-                        <strong>{item.topic}</strong>
-                        <span style={{ marginLeft: "8px", fontSize: "0.8rem", color: "#888" }}>
-                          (Mastery: {mastery}%)
+                        <strong style={{ fontSize: "1.05rem" }}>{item.topic}</strong>
+                        <span
+                          style={{
+                            marginLeft: "10px",
+                            padding: "2px 8px",
+                            borderRadius: "4px",
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                            background: item.severity === "high" ? "#fee2e2" : "#fef3c7",
+                            color: item.severity === "high" ? "#ef4444" : "#d97706",
+                          }}
+                        >
+                          {item.severity?.toUpperCase() || "MEDIUM"} SEVERITY ({accPercent}% Accuracy)
                         </span>
                       </div>
                       <button
@@ -131,6 +144,77 @@ function Progress() {
                           color: "white",
                           border: "none",
                           borderRadius: "6px",
+                          padding: "8px 14px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          fontSize: "0.85rem",
+                          fontWeight: 500,
+                        }}
+                      >
+                        <Sparkles size={14} /> Practice Topic
+                      </button>
+                    </div>
+
+                    <div className="progress__bar" style={{ marginTop: "10px" }}>
+                      <div
+                        className="progress__bar-fill"
+                        style={{
+                          width: `${accPercent}%`,
+                          background: "#ef4444",
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+          )}
+
+          <section className="progress__topics">
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+              <Target size={20} color="#6366f1" />
+              <h2 style={{ margin: 0 }}>Topic Mastery Breakdown</h2>
+            </div>
+
+            {topics.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-secondary)" }}>
+                <p>No topic analytics found yet. Complete a quiz to analyze topic performance!</p>
+              </div>
+            ) : (
+              topics.map((item) => {
+                const accPercent = Math.round((item.accuracy || 0) * 100);
+                const isMastered = item.status === "Mastered";
+                const isDeveloping = item.status === "Developing";
+
+                return (
+                  <div className="progress__topic" key={item.topic}>
+                    <div className="progress__topic-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <strong>{item.topic}</strong>
+                        <span
+                          style={{
+                            marginLeft: "10px",
+                            padding: "2px 8px",
+                            borderRadius: "4px",
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                            background: isMastered ? "#d1fae5" : isDeveloping ? "#e0f2fe" : "#fee2e2",
+                            color: isMastered ? "#10b981" : isDeveloping ? "#0284c7" : "#ef4444",
+                          }}
+                        >
+                          {item.status.toUpperCase()} ({accPercent}%)
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleGeneratePractice(item.topic)}
+                        disabled={generating}
+                        style={{
+                          background: isMastered ? "transparent" : "#6366f1",
+                          color: isMastered ? "var(--text-secondary)" : "white",
+                          border: isMastered ? "1px solid var(--border-color)" : "none",
+                          borderRadius: "6px",
                           padding: "6px 12px",
                           cursor: "pointer",
                           display: "flex",
@@ -139,7 +223,7 @@ function Progress() {
                           fontSize: "0.85rem",
                         }}
                       >
-                        <Sparkles size={14} /> Practice Topic
+                        <Sparkles size={14} /> Practice
                       </button>
                     </div>
 
@@ -147,8 +231,8 @@ function Progress() {
                       <div
                         className="progress__bar-fill"
                         style={{
-                          width: `${mastery}%`,
-                          background: mastery < 60 ? "#ef4444" : mastery < 80 ? "#f59e0b" : "#10b981",
+                          width: `${accPercent}%`,
+                          background: isMastered ? "#10b981" : isDeveloping ? "#f59e0b" : "#ef4444",
                         }}
                       ></div>
                     </div>
