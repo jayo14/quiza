@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, X, Sparkles, CheckCircle } from "lucide-react";
+import { Upload, X, Sparkles, CheckCircle, Loader2 } from "lucide-react";
 import { uploadMaterial, generateQuiz } from "../services/apiClient";
 import "./UploadMaterial.css";
 
 function UploadMaterial() {
-  const [files, setFiles] = useState([]);
+  const [fileList, setFileList] = useState([]);
   const [error, setError] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGenerated, setIsGenerated] = useState(false);
@@ -14,19 +14,28 @@ function UploadMaterial() {
 
   const handleFileChange = (event) => {
     const selectedFiles = Array.from(event.target.files);
-
     setError("");
 
-    const validFiles = [];
     const rejectedFiles = [];
+    const newItems = [];
 
     selectedFiles.forEach((file) => {
       const fileSizeMB = file.size / (1024 * 1024);
-
       if (fileSizeMB > 20) {
         rejectedFiles.push(`${file.name} is larger than 20 MB`);
       } else {
-        validFiles.push(file);
+        const item = {
+          id: `${file.name}-${Date.now()}-${Math.random()}`,
+          rawFile: file,
+          name: file.name,
+          totalSizeMB: (file.size / (1024 * 1024)).toFixed(2),
+          currentLoadedMB: "0.00",
+          progress: 0,
+          uploading: true,
+          uploaded: false,
+          materialId: null,
+        };
+        newItems.push(item);
       }
     });
 
@@ -34,30 +43,87 @@ function UploadMaterial() {
       setError(rejectedFiles.join(". "));
     }
 
-    setFiles((previousFiles) => [...previousFiles, ...validFiles]);
-
+    setFileList((prev) => [...prev, ...newItems]);
     event.target.value = "";
+
+    newItems.forEach((item) => {
+      startSingleFileUpload(item);
+    });
   };
 
-  const removeFile = (fileToRemove) => {
-    setFiles((previousFiles) =>
-      previousFiles.filter((file) => file !== fileToRemove),
-    );
+  const startSingleFileUpload = async (item) => {
+    try {
+      const material = await uploadMaterial(
+        item.rawFile,
+        item.name,
+        (percent, loaded) => {
+          const loadedMB = (loaded / (1024 * 1024)).toFixed(2);
+          setFileList((prev) =>
+            prev.map((f) =>
+              f.id === item.id
+                ? {
+                    ...f,
+                    progress: percent,
+                    currentLoadedMB: loadedMB,
+                  }
+                : f
+            )
+          );
+        }
+      );
+
+      setFileList((prev) =>
+        prev.map((f) =>
+          f.id === item.id
+            ? {
+                ...f,
+                progress: 100,
+                currentLoadedMB: f.totalSizeMB,
+                uploading: false,
+                uploaded: true,
+                materialId: material.id,
+              }
+            : f
+        )
+      );
+    } catch (err) {
+      console.error(`Upload error for ${item.name}:`, err);
+      setError(`Failed to upload ${item.name}: ${err.message}`);
+      setFileList((prev) =>
+        prev.map((f) =>
+          f.id === item.id
+            ? {
+                ...f,
+                uploading: false,
+                uploaded: false,
+                error: err.message,
+              }
+            : f
+        )
+      );
+    }
   };
+
+  const removeFile = (idToRemove) => {
+    setFileList((prev) => prev.filter((item) => item.id !== idToRemove));
+  };
+
+  const isAnyUploading = fileList.some((item) => item.uploading);
+  const allUploaded =
+    fileList.length > 0 && fileList.every((item) => item.uploaded);
 
   const handleGenerateQuiz = async () => {
-    if (files.length === 0) return;
+    if (!allUploaded) return;
 
     setIsGenerating(true);
     setIsGenerated(false);
     setError("");
 
     try {
-      const fileToUpload = files[0];
-      const material = await uploadMaterial(fileToUpload, fileToUpload.name);
+      const uploadedMaterialId = fileList[0].materialId;
 
       const quiz = await generateQuiz({
-        material_id: material.id,
+        material_id: uploadedMaterialId,
         number_of_questions: 5,
         difficulty: "medium",
         question_types: ["multiple_choice"],
@@ -116,24 +182,54 @@ function UploadMaterial() {
 
           {error && <p className="upload-material__error">{error}</p>}
 
-          {files.length > 0 && (
+          {fileList.length > 0 && (
             <div className="upload-material__files">
               <h3>Selected Materials</h3>
 
-              {files.map((file) => (
-                <div className="upload-material__file" key={file.name}>
-                  <div>
-                    <strong>{file.name}</strong>
-                    <span>{(file.size / (1024 * 1024)).toFixed(2)} MB</span>
+              {fileList.map((item) => (
+                <div className="upload-material__file-wrapper" key={item.id}>
+                  <div className="upload-material__file">
+                    <div>
+                      <strong>{item.name}</strong>
+                      <span className="upload-material__file-status">
+                        {item.uploaded
+                          ? `${item.totalSizeMB} MB`
+                          : `${item.currentLoadedMB} MB / ${item.totalSizeMB} MB (${item.progress}%)`}
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      {item.uploading && (
+                        <Loader2
+                          size={16}
+                          className="upload-material__spin"
+                          style={{ color: "var(--primary)" }}
+                        />
+                      )}
+                      {item.uploaded && (
+                        <CheckCircle
+                          size={18}
+                          style={{ color: "#10b981" }}
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeFile(item.id)}
+                        aria-label={`Remove ${item.name}`}
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => removeFile(file)}
-                    aria-label={`Remove ${file.name}`}
-                  >
-                    <X size={18} />
-                  </button>
+                  {!item.uploaded && (
+                    <div className="upload-material__progress-bar-wrap">
+                      <div
+                        className="upload-material__progress-bar-fill"
+                        style={{ width: `${item.progress}%` }}
+                      ></div>
+                    </div>
+                  )}
                 </div>
               ))}
 
@@ -141,9 +237,10 @@ function UploadMaterial() {
                 type="button"
                 className="upload-material__generate"
                 onClick={handleGenerateQuiz}
+                disabled={!allUploaded || isAnyUploading}
               >
                 <Sparkles size={18} />
-                Generate Quiz
+                {isAnyUploading ? "Uploading Material..." : "Generate Quiz"}
               </button>
             </div>
           )}
