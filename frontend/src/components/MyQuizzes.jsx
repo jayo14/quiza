@@ -88,7 +88,7 @@ function MyQuizzes() {
                 <div className="my-quiz__info">
                   <h3>{quiz.title || "Untitled Quiz"}</h3>
                   <p>
-                    {quiz.question_count || 0} Questions · Difficulty: {quiz.difficulty || "medium"}
+                    {quiz.question_count ?? quiz.questions?.length ?? 0} Questions · Difficulty: {quiz.difficulty || "medium"}
                     {quiz.status && quiz.status !== "ready" && (
                       <span
                         style={{
