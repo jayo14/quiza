@@ -20,19 +20,54 @@ function SignUp() {
     if (/[^A-Za-z0-9]/.test(pass)) score += 1;
 
     if (score <= 1) return { level: "weak", score: 1, text: "Weak password" };
-    if (score <= 3) return { level: "medium", score: 2, text: "Medium strength" };
+    if (score <= 3)
+      return { level: "medium", score: 2, text: "Medium strength" };
     return { level: "strong", score: 3, text: "Strong password" };
   };
 
   const strength = getPasswordStrength(password);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+
+    try {
+      const response = await fetch(
+        "https://quiza-urmm.onrender.com/api/v1/auth/signup",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: name,
+            email: email,
+            password: password,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail?.[0]?.msg || "Signup failed");
+      }
+
+      // Save the tokens returned by the API
+      localStorage.setItem("access_token", data.tokens.access_token);
+      localStorage.setItem("refresh_token", data.tokens.refresh_token);
+
+      // Save user information
+      localStorage.setItem("user", JSON.stringify(data.user));
+
       navigate("/");
-    }, 600);
+    } catch (error) {
+      console.error("Signup error:", error);
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -68,7 +103,6 @@ function SignUp() {
               />
             </div>
           </div>
-
 
           <div className="signup-field">
             <label htmlFor="signup-email">Email Address</label>
@@ -114,9 +148,13 @@ function SignUp() {
             {password && (
               <div className="signup-strength">
                 <div className="signup-strength__bar-wrap">
-                  <div className={`signup-strength__bar signup-strength__bar--${strength.level}`} />
+                  <div
+                    className={`signup-strength__bar signup-strength__bar--${strength.level}`}
+                  />
                 </div>
-                <span className={`signup-strength__text signup-strength__text--${strength.level}`}>
+                <span
+                  className={`signup-strength__text signup-strength__text--${strength.level}`}
+                >
                   {strength.text}
                 </span>
               </div>
@@ -124,7 +162,11 @@ function SignUp() {
           </div>
 
           {/* Submit Button */}
-          <button type="submit" className="signup-submit-btn" disabled={loading}>
+          <button
+            type="submit"
+            className="signup-submit-btn"
+            disabled={loading}
+          >
             {loading ? "Creating account..." : "Create Account"}
             {!loading && <ArrowRight size={16} />}
           </button>

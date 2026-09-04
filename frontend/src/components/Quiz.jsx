@@ -30,22 +30,15 @@ function Quiz() {
   const [selectedAnswer, setSelectedAnswer] = useState("");
   const [score, setScore] = useState(0);
   const [userAnswers, setUserAnswers] = useState([]);
-
   const navigate = useNavigate();
-
   const question = questions[currentQuestion];
-
   const handleAnswer = (answer) => {
     setSelectedAnswer(answer);
   };
-
   const handleNext = () => {
     if (!selectedAnswer) return;
-
     const isCorrect = selectedAnswer === question.answer;
-
     const newScore = isCorrect ? score + 1 : score;
-
     const newAnswers = [
       ...userAnswers,
       {

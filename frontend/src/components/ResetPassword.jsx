@@ -1,6 +1,13 @@
 ﻿import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Lock, Eye, EyeOff, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
+import {
+  Lock,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
+} from "lucide-react";
 import "./ResetPassword.css";
 
 function ResetPassword() {
@@ -14,17 +21,47 @@ function ResetPassword() {
 
   const isMatching = confirmPassword.length > 0 && password === confirmPassword;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (password !== confirmPassword) return;
+
+    if (password !== confirmPassword) {
+      alert("Passwords do not match.");
+      return;
+    }
 
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSuccess(true);
-    }, 600);
-  };
 
+    try {
+      const response = await fetch(
+        "https://quiza-urmm.onrender.com/api/v1/auth/reset-password",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token: "null",
+            new_password: password,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+
+        throw new Error(data.detail?.[0]?.msg || "Password reset failed");
+      }
+
+      // 204 = password was successfully changed
+
+      setSuccess(true);
+    } catch (error) {
+      console.error("Reset password error:", error);
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <div className="reset-container">
       <div className="reset-glow" aria-hidden="true" />
@@ -44,7 +81,11 @@ function ResetPassword() {
         {success ? (
           <div>
             <div className="reset-success-box">
-              <CheckCircle2 size={28} color="#35D07F" style={{ margin: "0 auto 8px" }} />
+              <CheckCircle2
+                size={28}
+                color="#35D07F"
+                style={{ margin: "0 auto 8px" }}
+              />
               <p>
                 <strong>Password successfully updated!</strong>
                 <br />
@@ -89,7 +130,9 @@ function ResetPassword() {
 
             {/* Confirm Password */}
             <div className="reset-field">
-              <label htmlFor="reset-confirm-password">Confirm New Password</label>
+              <label htmlFor="reset-confirm-password">
+                Confirm New Password
+              </label>
               <div className="reset-input-wrap">
                 <Lock size={18} className="reset-input-icon" />
                 <input

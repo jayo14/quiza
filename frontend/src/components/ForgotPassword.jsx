@@ -7,16 +7,38 @@ function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSubmitted(true);
-    }, 600);
-  };
 
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        "https://quiza-urmm.onrender.com/api/v1/auth/forgot-password",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: email,
+          }),
+        },
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail?.[0]?.msg || "Failed to send reset link");
+      }
+      console.log("Forgot password response:", data);
+      setSubmitted(true);
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <div className="forgot-container">
       <div className="forgot-glow" aria-hidden="true" />
@@ -31,16 +53,22 @@ function ForgotPassword() {
         <div className="forgot-header">
           <h1>Reset your password</h1>
           <p>
-            Enter your email address and we'll send you a link to reset your password.
+            Enter your email address and we'll send you a link to reset your
+            password.
           </p>
         </div>
 
         {submitted ? (
           <div>
             <div className="forgot-success-box">
-              <CheckCircle2 size={24} color="#35D07F" style={{ margin: "0 auto 8px" }} />
+              <CheckCircle2
+                size={24}
+                color="#35D07F"
+                style={{ margin: "0 auto 8px" }}
+              />
               <p>
-                A password reset link has been sent to <strong>{email}</strong>. Please check your inbox.
+                A password reset link has been sent to <strong>{email}</strong>.
+                Please check your inbox.
               </p>
             </div>
 
@@ -78,7 +106,12 @@ function ForgotPassword() {
             </div>
 
             {/* Submit Button */}
-            <button type="submit" className="forgot-submit-btn" disabled={loading}>
+
+            <button
+              type="submit"
+              className="forgot-submit-btn"
+              disabled={loading}
+            >
               {loading ? "Sending link..." : "Send Reset Link"}
               {!loading && <ArrowRight size={16} />}
             </button>

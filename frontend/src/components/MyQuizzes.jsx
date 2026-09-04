@@ -1,11 +1,9 @@
 import "./MyQuizzes.css";
-
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 
 function MyQuizzes() {
   const navigate = useNavigate();
-
   return (
     <section className="my-quizzes">
       <div className="my-quizzes__header">

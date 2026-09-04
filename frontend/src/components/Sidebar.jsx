@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-
+import { useState } from "react";
 import {
   LayoutDashboard,
   Upload,
@@ -14,6 +14,10 @@ import "./Sidebar.css";
 
 function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
+  const [user] = useState(() => {
+    const savedUser = localStorage.getItem("user");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
 
   const handleSignOut = () => {
     onClose();
@@ -106,10 +110,12 @@ function Sidebar({ isOpen, onClose }) {
 
         <div className="sidebar__bottom">
           <div className="sidebar__profile">
-            <div className="sidebar__avatar">E</div>
-
+            <div className="sidebar__avatar">
+              {" "}
+              {user?.name?.charAt(0).toUpperCase() || "U"}
+            </div>
             <div>
-              <p>Elvis</p>
+              <p>{user?.name || "User"}</p>
               <span>Student</span>
             </div>
           </div>

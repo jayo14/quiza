@@ -7,7 +7,6 @@ function UploadMaterial() {
   const [error, setError] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGenerated, setIsGenerated] = useState(false);
-
   const handleFileChange = (event) => {
     const selectedFiles = Array.from(event.target.files);
 
@@ -47,7 +46,7 @@ function UploadMaterial() {
     setIsGenerating(true);
     setIsGenerated(false);
 
-    // Simulate AI quiz generation
+    //  Simulate AI quiz generation
     setTimeout(() => {
       setIsGenerating(false);
       setIsGenerated(true);

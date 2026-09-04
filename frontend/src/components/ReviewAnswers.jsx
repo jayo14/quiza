@@ -4,7 +4,6 @@ import "./ReviewAnswers.css";
 function ReviewAnswers() {
   const location = useLocation();
   const navigate = useNavigate();
-
   const answers = location.state?.answers || [];
 
   return (

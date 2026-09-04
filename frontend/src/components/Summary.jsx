@@ -4,13 +4,10 @@ import "./Summary.css";
 function Summary() {
   const location = useLocation();
   const navigate = useNavigate();
-
   const score = location.state?.score ?? 0;
   const total = location.state?.total ?? 0;
   const answers = location.state?.answers ?? [];
-
   const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
-
   const incorrect = total - score;
 
   return (

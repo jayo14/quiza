@@ -1,7 +1,12 @@
 import { Bell, Menu } from "lucide-react";
+import { useState } from "react";
 import "./Header.css";
 
 function Header({ onToggleMenu }) {
+  const [user] = useState(() => {
+    const savedUser = localStorage.getItem("user");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
   return (
     <header className="header">
       <div className="header__left">
@@ -14,7 +19,7 @@ function Header({ onToggleMenu }) {
         </button>
 
         <div className="header__greeting">
-          <h1>Good morning Elvis,</h1>
+          <h1>Good morning {user?.name || "there"},</h1>
           <p>Ready to continue learning?</p>
         </div>
       </div>
@@ -25,10 +30,10 @@ function Header({ onToggleMenu }) {
         </button>
 
         <div className="header__profile">
-          <div className="header__avatar">E</div>
+          <div className="header__avatar">{user?.name?.charAt(0) || "U"}</div>
 
           <div className="header__user">
-            <span>Elvis</span>
+            <span>{user?.name || "User"}</span>
             <small>Student</small>
           </div>
         </div>

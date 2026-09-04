@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 
 import Sidebar from "./components/Sidebar";
@@ -22,13 +22,52 @@ import "./App.css";
 function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const token = localStorage.getItem("access_token");
+
+      // No token means nobody is logged in
+      if (!token) {
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          "https://quiza-urmm.onrender.com/api/v1/auth/me",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error("Session expired");
+        }
+
+        const user = await response.json();
+
+        // Update the saved user information
+        localStorage.setItem("user", JSON.stringify(user));
+      } catch (error) {
+        console.error("Authentication check failed:", error);
+
+        // Remove invalid login information
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("user");
+      }
+    };
+
+    getCurrentUser();
+  }, []);
+
   return (
     <div className="app">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
       <div className="main-area">
         <Header onToggleMenu={() => setSidebarOpen((prev) => !prev)} />
-
         <main className="main-content">
           <Outlet />
         </main>

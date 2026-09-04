@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import "./Dashboard.css";
-
 import StatCard from "./StatCard.jsx";
 import ContinueLearning from "./ContinueLearning.jsx";
 import RecentQuizzes from "./RecentQuizzes.jsx";
@@ -11,7 +10,6 @@ function Dashboard() {
       <div className="dashboard__welcome">
         <div>
           <h1>Ready to sharpen a few more topics today?</h1>
-
           <p>Upload your study material and let Quiza turn it into a quiz.</p>
         </div>
 
@@ -47,7 +45,6 @@ function Dashboard() {
       </section>
 
       <ContinueLearning />
-
       <RecentQuizzes />
     </section>
   );

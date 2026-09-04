@@ -11,13 +11,47 @@ function SignIn() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+
+    try {
+      const response = await fetch(
+        "https://quiza-urmm.onrender.com/api/v1/auth/signin",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: email,
+            password: password,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail?.[0]?.msg || "Sign in failed");
+      }
+
+      // Save the tokens
+      localStorage.setItem("access_token", data.tokens.access_token);
+      localStorage.setItem("refresh_token", data.tokens.refresh_token);
+
+      // Save user information
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // Go to dashboard
       navigate("/");
-    }, 600);
+    } catch (error) {
+      console.error("Signin error:", error);
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -95,7 +129,11 @@ function SignIn() {
           </div>
 
           {/* Submit Button */}
-          <button type="submit" className="signin-submit-btn" disabled={loading}>
+          <button
+            type="submit"
+            className="signin-submit-btn"
+            disabled={loading}
+          >
             {loading ? "Signing in..." : "Sign In"}
             {!loading && <ArrowRight size={16} />}
           </button>
