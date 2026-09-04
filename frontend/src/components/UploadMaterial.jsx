@@ -24,16 +24,22 @@ function UploadMaterial() {
       if (fileSizeMB > 20) {
         rejectedFiles.push(`${file.name} is larger than 20 MB`);
       } else {
+        const formatSize = (bytes) => {
+          if (bytes < 1024) return `${bytes} B`;
+          if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+          return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+        };
         const item = {
           id: `${file.name}-${Date.now()}-${Math.random()}`,
           rawFile: file,
           name: file.name,
-          totalSizeMB: (file.size / (1024 * 1024)).toFixed(2),
-          currentLoadedMB: "0.00",
+          totalSizeMB: formatSize(file.size),
+          currentLoadedMB: formatSize(0),
           progress: 0,
           uploading: true,
           uploaded: false,
           materialId: null,
+          formatSize,
         };
         newItems.push(item);
       }
@@ -57,14 +63,13 @@ function UploadMaterial() {
         item.rawFile,
         item.name,
         (percent, loaded) => {
-          const loadedMB = (loaded / (1024 * 1024)).toFixed(2);
           setFileList((prev) =>
             prev.map((f) =>
               f.id === item.id
                 ? {
                     ...f,
                     progress: percent,
-                    currentLoadedMB: loadedMB,
+                    currentLoadedMB: f.formatSize ? f.formatSize(loaded) : `${(loaded / (1024 * 1024)).toFixed(2)} MB`,
                   }
                 : f
             )
@@ -193,8 +198,8 @@ function UploadMaterial() {
                       <strong>{item.name}</strong>
                       <span className="upload-material__file-status">
                         {item.uploaded
-                          ? `${item.totalSizeMB} MB`
-                          : `${item.currentLoadedMB} MB / ${item.totalSizeMB} MB (${item.progress}%)`}
+                          ? item.totalSizeMB
+                          : `${item.currentLoadedMB} / ${item.totalSizeMB} (${item.progress}%)`}
                       </span>
                     </div>
 
