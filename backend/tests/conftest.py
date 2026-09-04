@@ -5,6 +5,7 @@ _db_fd, _db_path = tempfile.mkstemp(suffix=".db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_db_path}"
 os.environ["JWT_SECRET_KEY"] = "test-only-secret"
 os.environ["OPENAI_API_KEY"] = "sk-test-not-real"
+os.environ["GEMINI_API_KEY"] = "fake-gemini-key-for-testing"
 os.environ["STORAGE_DIR"] = tempfile.mkdtemp(prefix="quiza-test-storage-")
 
 import pytest  # noqa: E402
