@@ -40,17 +40,43 @@ function UploadMaterial() {
     );
   };
 
-  const handleGenerateQuiz = () => {
+  const handleGenerateQuiz = async () => {
     if (files.length === 0) return;
 
     setIsGenerating(true);
     setIsGenerated(false);
+    setError("");
 
-    //  Simulate AI quiz generation
-    setTimeout(() => {
+    try {
+      const formData = new FormData();
+      formData.append("file", files[0]);
+
+      const response = await fetch(
+        "https://quiza-urmm.onrender.com/api/v1/materials",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+          body: formData,
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to upload material");
+      }
+
+      console.log("Material uploaded:", data);
+
       setIsGenerating(false);
       setIsGenerated(true);
-    }, 3000);
+    } catch (error) {
+      console.error("Upload error:", error);
+      setError(error.message);
+      setIsGenerating(false);
+    }
   };
 
   return (
