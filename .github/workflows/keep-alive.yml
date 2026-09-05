@@ -1,0 +1,27 @@
+name: Render Backend Keep-Alive
+
+on:
+  schedule:
+    # Runs every 10 minutes to keep Render free tier awake
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Health Endpoint
+        run: |
+          URL="${{ secrets.RENDER_BACKEND_URL }}"
+          if [ -z "$URL" ]; then
+            URL="https://quiza-urmm.onrender.com"
+          fi
+          HEALTH_URL="${URL%/}/health"
+          echo "Pinging backend health endpoint: $HEALTH_URL"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$HEALTH_URL")
+          echo "HTTP Status Code: $STATUS"
+          if [ "$STATUS" -eq 200 ]; then
+            echo "Backend is active and healthy."
+          else
+            echo "Backend returned HTTP $STATUS (might be waking up)."
+          fi

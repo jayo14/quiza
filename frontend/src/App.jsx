@@ -17,6 +17,8 @@ import SignUp from "./components/SignUp";
 import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
 
+import ServerWarmupBanner from "./components/ServerWarmupBanner";
+
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
 import "./App.css";
@@ -54,6 +56,7 @@ function DashboardLayout() {
 function App() {
   return (
     <AuthProvider>
+      <ServerWarmupBanner />
       <BrowserRouter>
         <Routes>
           <Route path="/signin" element={<SignIn />} />

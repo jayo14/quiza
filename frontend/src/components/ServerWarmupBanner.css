@@ -1,0 +1,83 @@
+.server-warmup-banner {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: var(--radius-md, 10px);
+  font-size: 13.5px;
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideUp 0.3s ease-out;
+}
+
+.server-warmup-banner--warming {
+  background: rgba(30, 27, 75, 0.92);
+  border: 1px solid rgba(129, 140, 248, 0.4);
+  color: #e0e7ff;
+}
+
+.server-warmup-banner--ready {
+  background: rgba(6, 78, 59, 0.92);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: #ecfdf5;
+}
+
+.server-warmup-icon.pulse {
+  color: #818cf8;
+  animation: pulseIcon 1.5s infinite alternate;
+}
+
+.server-warmup-icon.success {
+  color: #34d17c;
+}
+
+.server-warmup-spinner {
+  animation: spin 1s linear infinite;
+  color: #a5b4fc;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulseIcon {
+  from {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  to {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .server-warmup-banner {
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    font-size: 12.5px;
+  }
+}
