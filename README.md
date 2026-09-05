@@ -44,20 +44,20 @@ Quiza is built with a modern full-stack architecture combining high-performance 
 - **Large Language Model (LLM)**: Google Gemini (`gemini-2.5-flash` / `gemini-3.6-flash`) interfaced through abstract provider abstractions (`LLMProvider`).
 - **Embeddings & Vector Search**: Google Gemini Embeddings (`text-embedding-004`) with pluggable vector stores (`VectorStore`).
 - **Mathematical Grounding & Cosine Distance**:
-  Documents are chunked into semantic snippets \(\mathbf{d}_i\) and embedded into vector space \(\mathbb{R}^d\). Given a prompt or query chunk \(\mathbf{q}\), similarity search measures cosine similarity:
+  Documents are chunked into semantic snippets $\mathbf{d}_i$ and embedded into vector space $\mathbb{R}^d$. Given a prompt or query chunk $\mathbf{q}$, similarity search measures cosine similarity:
 
-  \[
+  $$
   \text{Sim}(\mathbf{q}, \mathbf{d}_i) = \frac{\mathbf{q} \cdot \mathbf{d}_i}{\|\mathbf{q}\| \|\mathbf{d}_i\|} = \frac{\sum_{k=1}^{n} q_k d_{i,k}}{\sqrt{\sum_{k=1}^{n} q_k^2} \sqrt{\sum_{k=1}^{n} d_{i,k}^2}}
-  \]
+  $$
 
 - **Weakness Aggregation Formula**:
-  Weakness score \(W(t)\) for a topic \(t\) is dynamically computed over user attempts:
+  Weakness score $W(t)$ for a topic $t$ is dynamically computed over user attempts:
 
-  \[
+  $$
   W(t) = 1 - \frac{\sum_{j=1}^{M} S_{j,t} \cdot w_j}{\sum_{j=1}^{M} w_j}
-  \]
+  $$
 
-  where \(S_{j,t} \in [0, 1]\) is the score on attempt \(j\) for topic \(t\), weighted exponentially by recency \(w_j = e^{-\lambda (t_{now} - t_j)}\).
+  where $S_{j,t} \in [0, 1]$ is the score on attempt $j$ for topic $t$, weighted exponentially by recency $w_j = e^{-\lambda (t_{\text{now}} - t_j)}$.
 
 ---
 
