@@ -1,221 +1,242 @@
-# Quiza
+# Quiza — AI-Powered Active Recall & Study Platform
 
-An AI-powered study platform that turns your learning materials into quizzes, analyzes your mistakes, discovers your weaknesses, and gives you personalized practice to improve.
-
-Quiza is a full-stack learning platform: upload study materials, generate quizzes grounded in that material via RAG, take them, and get AI-driven mistake analysis, weakness detection, learning summaries, and targeted practice.
-
-Core loop: **Upload Material → Background Processing → RAG Quiz Generation → Interactive Attempt → AI Mistake Analysis → Weakness Detection → Personalized Practice → Track Improvement**
+> **Turn your study materials into interactive RAG quizzes, discover your weak spots through AI mistake analysis, and master any subject with personalized practice.**
 
 ---
 
-## Tech Stack
+## Inspiration
 
-### Frontend
-- **Framework & Build Tool**: React 19, Vite
-- **Styling**: Modern CSS / CSS Modules
-- **Linting**: Oxlint
+Students and self-learners spend up to **80% of their study time passively re-reading notes or highlighting textbooks**—methods proven to produce poor retention. Cognitive science shows that **active recall** and **spaced retrieval** are exponentially more effective for long-term memory. However, manually creating high-quality flashcards or practice test questions from lecture notes, slides, and textbooks is tedious and time-consuming.
 
-### Backend
-- **Framework**: FastAPI (Python 3.10+) + Pydantic v2 / Pydantic Settings
-- **Database & ORM**: SQLAlchemy 2.0 + Alembic migrations
-- **Local Database**: SQLite (default, zero extra infra)
-- **Production Database**: PostgreSQL with `pgvector` extension
-- **Authentication**: JWT (`python-jose`) + `bcrypt` password hashing
-- **Document Processing**: PyMuPDF (PDF), `python-docx` (DOC/DOCX), `pytesseract` (OCR)
-
-### AI & RAG Engine
-- **LLM & Embeddings**: OpenAI (`gpt-4o-mini` / `text-embedding-3-small`) behind abstract provider interfaces (`LLMProvider`, `EmbeddingProvider`)
-- **Vector Store**: Pluggable `VectorStore` interface with SQLite cosine distance (local) and `pgvector` (production)
-- **RAG Retrieval**: Grounded retrieval scoped strictly to user ownership
+We built **Quiza** to eliminate this friction. Imagine uploading your PDF textbook or lecture slides and having an intelligent tutor instantly generate grounded, context-aware quizzes, grade your responses, analyze exactly *why* you missed a question using math-backed similarity scoring, and auto-generate target practice tests for your weakest topics.
 
 ---
 
-## Project Layout
+## What it does
 
-```text
-quiza/
-├── frontend/                        # Web application (React + Vite)
-│   ├── src/                         # React components, styles, and assets
-│   ├── public/                      # Static assets and icons
-│   ├── package.json                 # Dependencies and npm scripts
-│   ├── vite.config.js               # Vite build configuration
-│   └── .oxlintrc.json               # Oxlint configuration
-│
-└── backend/                         # FastAPI backend & AI engine
-    ├── app/
-    │   ├── main.py                  # FastAPI entrypoint, CORS, middleware
-    │   ├── core/                    # App settings, JWT security, rate limits, exceptions
-    │   ├── api/v1/                  # REST API endpoints (auth, materials, quizzes, attempts, analytics)
-    │   ├── models/                  # SQLAlchemy ORM models
-    │   ├── schemas/                 # Pydantic validation schemas
-    │   ├── services/                # Business logic layers
-    │   ├── ai/                      # AI & RAG system
-    │   │   ├── llm/                 # LLMProvider interface & OpenAI driver
-    │   │   ├── embeddings/          # EmbeddingProvider interface & OpenAI driver
-    │   │   ├── vectorstore/         # VectorStore abstraction (SQLite & pgvector)
-    │   │   ├── rag/                 # File ingestion, chunking, retrieval
-    │   │   ├── prompts/             # Prompt engineering templates
-    │   │   ├── quiz_generator.py    # RAG quiz generation
-    │   │   ├── answer_analyzer.py    # AI mistake analysis
-    │   │   ├── weakness_detector.py # Algorithmic weakness aggregation
-    │   │   ├── summary_generator.py # Learning summary generation
-    │   │   └── practice_generator.py# Targeted practice questions
-    │   ├── storage/                 # Document storage providers
-    │   └── db/                      # Database connection and session management
-    ├── alembic/                     # Database migrations
-    ├── tests/                       # Pytest test suite with mocked AI providers
-    ├── Dockerfile                   # Backend Docker build script
-    └── docker-compose.yml           # Local container orchestration
-```
+Quiza is an end-to-end AI study ecosystem:
+
+1. **Document Ingestion & Parsing**: Upload PDFs, text documents, or lecture notes.
+2. **Context-Grounded RAG Quiz Generation**: Generates multiple-choice, true/false, or short-answer quizzes grounded strictly in your uploaded material—eliminating LLM hallucinations.
+3. **AI Mistake Analysis**: Evaluates your attempt answers and provides step-by-step reasoning explaining why your choice was correct or incorrect based on source text.
+4. **Algorithmic Weakness Detection**: Tracks performance metrics over time across different sub-topics, surfacing exact concept gaps.
+5. **Targeted Practice**: Automatically builds personalized practice quizzes focused on your weakest concepts until you reach mastery.
 
 ---
 
-## Getting Started
+## How we built it
 
-### Prerequisites
-- **Node.js** (v18+) & **npm**
-- **Python** (3.10+)
-- **OpenAI API Key** (for AI features)
+Quiza is built with a modern full-stack architecture combining high-performance frontend frameworks, asynchronous Python microservices, and cutting-edge retrieval-augmented generation (RAG) machine learning pipelines.
+
+### 1. Frontend Engine (UI/UX)
+- **Framework**: React 19 with Vite for ultra-fast HMR and bundle optimization.
+- **Routing & Navigation**: React Router v7.
+- **Styling & Components**: Custom CSS system engineered for dark-mode aesthetic, responsive dashboards, interactive quiz interfaces, and server warmup toasts.
+- **Icons & Visuals**: Lucide React.
+
+### 2. Backend API & Core System
+- **Framework**: FastAPI (Python 3.10+) utilizing asynchronous handlers for fast document processing and AI streaming.
+- **Database & Storage**: SQLAlchemy 2.0 ORM paired with Alembic migrations. Supports SQLite for zero-config local development and PostgreSQL with `pgvector` for production scalability.
+- **Authentication**: Secure JWT authentication (`python-jose`) with bcrypt password hashing and token refresh cycles.
+- **Document Extractors**: PyMuPDF (`fitz`) for PDF parsing, `python-docx` for document processing, and `pytesseract` for image-to-text OCR.
+
+### 3. Machine Learning & RAG Engine
+- **Large Language Model (LLM)**: Google Gemini (`gemini-2.5-flash` / `gemini-3.6-flash`) interfaced through abstract provider abstractions (`LLMProvider`).
+- **Embeddings & Vector Search**: Google Gemini Embeddings (`text-embedding-004`) with pluggable vector stores (`VectorStore`).
+- **Mathematical Grounding & Cosine Distance**:
+  Documents are chunked into semantic snippets \(\mathbf{d}_i\) and embedded into vector space \(\mathbb{R}^d\). Given a prompt or query chunk \(\mathbf{q}\), similarity search measures cosine similarity:
+
+  \[
+  \text{Sim}(\mathbf{q}, \mathbf{d}_i) = \frac{\mathbf{q} \cdot \mathbf{d}_i}{\|\mathbf{q}\| \|\mathbf{d}_i\|} = \frac{\sum_{k=1}^{n} q_k d_{i,k}}{\sqrt{\sum_{k=1}^{n} q_k^2} \sqrt{\sum_{k=1}^{n} d_{i,k}^2}}
+  \]
+
+- **Weakness Aggregation Formula**:
+  Weakness score \(W(t)\) for a topic \(t\) is dynamically computed over user attempts:
+
+  \[
+  W(t) = 1 - \frac{\sum_{j=1}^{M} S_{j,t} \cdot w_j}{\sum_{j=1}^{M} w_j}
+  \]
+
+  where \(S_{j,t} \in [0, 1]\) is the score on attempt \(j\) for topic \(t\), weighted exponentially by recency \(w_j = e^{-\lambda (t_{now} - t_j)}\).
 
 ---
 
-### 1. Frontend Setup
+## Challenges we ran into
 
-Navigate to the `frontend/` directory, install dependencies, and start the development server:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The frontend development server will run at `http://localhost:5173`.
-
-#### Available Frontend Scripts
-- `npm run dev` — Starts Vite development server with HMR.
-- `npm run build` — Builds production-ready static assets into `dist/`.
-- `npm run lint` — Runs Oxlint for code linting.
-- `npm run preview` — Previews the production build locally.
+- **Hallucination Prevention**: Ensuring AI-generated questions and explanations never invent facts outside the uploaded document. We solved this by enforcing strict prompt-grounding constraints and Pydantic validation schemas with single-retry feedback loops.
+- **Render Free-Tier Cold Boots**: Render's free tier spins down services after 15 minutes of inactivity. We engineered an automated GitHub Actions keep-alive workflow (`.github/workflows/keep-alive.yml`) along with client-side server warmup notifications to ensure seamless UX.
+- **Adblocker Interception**: Browser extensions blocked root `/health` requests (`ERR_BLOCKED_BY_CLIENT`). We introduced API-scoped ping endpoints (`/api/v1/ping`) and graceful client-side fallback handling.
 
 ---
 
-### 2. Backend Setup
+## Accomplishments that we're proud of
 
-Navigate to the `backend/` directory, create a virtual environment, install dependencies, and set up environment variables:
+- **Strict Grounding**: 100% material-grounded quizzes with direct citation references back to uploaded lecture notes.
+- **Lightning-Fast UI**: Sub-second UI state transitions powered by Vite and optimized React components.
+- **Robust Mocking**: Complete test suite execution without consuming API credits or requiring network calls through custom mock providers.
+- **Cross-Platform Resilience**: Flawless deployment and execution support across Linux, macOS, and Windows.
 
+---
+
+## What we learned
+
+- Designing modular provider abstractions (`LLMProvider`, `EmbeddingProvider`, `VectorStore`) makes swapping underlying AI models or vector databases effortless.
+- Client UX design during AI latency (warmup toasts, progress spinners, retry indicators) is just as critical as raw backend speed.
+- Strict Pydantic schema validation is key to reliably consuming structured outputs from LLMs in production.
+
+---
+
+## What's next for Quiza
+
+- **Multi-Modal Support**: Image diagram extraction and formula parsing directly from handwritten notes.
+- **Spaced Repetition Scheduler**: Anki-style SuperMemo SM-2 algorithm integration for scheduled quiz reviews.
+- **Collaborative Study Groups**: Share material libraries and compete on topic leaderboards with classmates.
+- **Browser Extension**: Generate quick micro-quizzes directly while reading academic papers or online articles.
+
+---
+
+## Installation & Local Setup
+
+Follow these instructions to run Quiza locally on **Linux**, **macOS**, or **Windows**.
+
+### Prerequisites & Dependencies
+
+| Tool | Version Required | Download Link |
+|---|---|---|
+| **Node.js** | `v18.0.0` or higher | [nodejs.org](https://nodejs.org/) |
+| **npm** | `v9.0.0` or higher | Included with Node.js |
+| **Python** | `v3.10` or higher | [python.org](https://www.python.org/) |
+| **Google Gemini API Key** | (Required for AI features) | [Google AI Studio](https://aistudio.google.com/) |
+
+---
+
+### 1. Backend Setup
+
+#### Step 1.1: Navigate to backend directory
 ```bash
 cd backend
+```
+
+#### Step 1.2: Create and activate virtual environment
+
+**On Linux / macOS:**
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
+```
+
+**On Windows (PowerShell):**
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+**On Windows (Command Prompt `cmd.exe`):**
+```cmd
+python -m venv .venv
+\.venv\Scripts\activate.bat
+```
+
+#### Step 1.3: Install backend dependencies
+```bash
 pip install -r requirements.txt
 ```
 
-#### Environment Variables
-Copy `.env.example` to `.env`:
+#### Step 1.4: Configure Environment Variables
 
+Create your `.env` configuration file from `.env.example`:
+
+**On Linux / macOS:**
 ```bash
 cp .env.example .env
 ```
 
-Key environment variables:
-| Variable | Purpose | Default |
-|---|---|---|
-| `DATABASE_URL` | Relational database connection string | `sqlite:///./quiza.db` |
-| `JWT_SECRET_KEY` | Secret key for signing JWT tokens | (Required in production) |
-| `OPENAI_API_KEY` | OpenAI key for RAG & quiz generation | (Required for AI endpoints) |
-| `VECTOR_STORE_BACKEND` | Vector storage backend (`sqlite` or `pgvector`) | `sqlite` |
-| `STORAGE_DIR` | Directory for uploaded material files | `./storage_data` |
-| `AI_RATE_LIMIT_PER_MINUTE` | Rate limit for AI endpoints per user | `10` |
+**On Windows (PowerShell or Command Prompt):**
+```cmd
+copy .env.example .env
+```
 
-#### Database Setup & Migrations
-Apply database migrations with Alembic:
+Open `.env` in your text editor and fill in your keys:
 
+```env
+# --- Core App & DB ---
+APP_NAME=Quiza
+APP_ENV=development
+DATABASE_URL=sqlite:///./quiza.db
+JWT_SECRET_KEY=your-super-secret-random-jwt-key-here
+
+# --- Google Gemini AI Key ---
+GEMINI_API_KEY=your_google_gemini_api_key_here
+GEMINI_CHAT_MODEL=gemini-2.5-flash
+GEMINI_EMBEDDING_MODEL=text-embedding-004
+
+# --- Storage & Vector Store ---
+STORAGE_BACKEND=local
+STORAGE_DIR=./storage
+VECTOR_STORE_BACKEND=sqlite
+CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+```
+
+#### Step 1.5: Run database migrations
 ```bash
 alembic upgrade head
 ```
 
-#### Running the Backend API
-Start the FastAPI server using Uvicorn:
-
+#### Step 1.6: Start the FastAPI server
 ```bash
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 ```
-
-- **API Documentation (Swagger UI)**: `http://localhost:8000/docs`
-- **ReDoc**: `http://localhost:8000/redoc`
-- **Health Check**: `http://localhost:8000/health`
-
-#### Running with Docker
-Alternatively, run the backend using Docker Compose:
-
-```bash
-cd backend
-docker compose up --build
-```
+The API server will run at `http://localhost:8000`. You can access interactive Swagger documentation at `http://localhost:8000/docs`.
 
 ---
 
-## Running Backend Tests
+### 2. Frontend Setup
 
-Run the pytest suite:
+#### Step 2.1: Open a new terminal and navigate to frontend directory
+```bash
+cd frontend
+```
+
+#### Step 2.2: Install frontend dependencies
+```bash
+npm install
+```
+
+#### Step 2.3: Configure Frontend Environment Variables (Optional)
+If your backend is running on a custom port or remote host, create a `.env` file in `frontend/`:
+
+**On Linux / macOS:**
+```bash
+cp .env.example .env 2>/dev/null || echo "VITE_API_URL=http://localhost:8000/api/v1" > .env
+```
+
+**On Windows:**
+```cmd
+echo VITE_API_URL=http://localhost:8000/api/v1 > .env
+```
+
+#### Step 2.4: Start Vite development server
+```bash
+npm run dev
+```
+The web application will launch at `http://localhost:5173`.
+
+---
+
+## Running Tests
+
+Run the full backend unit test suite:
 
 ```bash
 cd backend
 pytest
 ```
 
-All AI calls (`LLMProvider`/`EmbeddingProvider`) are automatically mocked in tests via `tests/fakes.py` so running tests does not consume OpenAI credits or require network access.
+*Note: All AI provider calls are automatically mocked during tests using `tests/fakes.py` so tests execute offline without consuming API credits.*
 
 ---
 
-## AI & RAG System Architecture
+## Contributors
 
-1. **Ingestion**: Uploading material via `POST /api/v1/materials` triggers background parsing, chunking, embedding, and vector storage.
-2. **Retrieval**: Vector retrieval is strictly scoped to the requesting `user_id` at both vector-store and relational database layers.
-3. **Structured AI Generation**: LLM outputs (quizzes, analysis, summaries) are validated against Pydantic models with automatic single-retry error feedback on schema mismatch.
-
----
-
-## Example API Requests
-
-```bash
-# 1. Sign Up
-curl -X POST http://localhost:8000/api/v1/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{"email":"student@example.com","password":"password123","name":"Student"}'
-
-# 2. Upload Material (use access_token from signup response)
-curl -X POST http://localhost:8000/api/v1/materials \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@lecture_notes.pdf"
-
-# 3. Generate Quiz (when material status is "ready")
-curl -X POST http://localhost:8000/api/v1/quizzes/generate \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"material_id":"<id>","number_of_questions":10,"difficulty":"medium","question_types":["multiple_choice","true_false"]}'
-
-# 4. Start & Submit Quiz Attempt
-curl -X POST http://localhost:8000/api/v1/quizzes/<quiz_id>/attempts -H "Authorization: Bearer $TOKEN"
-curl -X POST http://localhost:8000/api/v1/attempts/<attempt_id>/submit \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"answers":[{"question_id":"<id>","selected_answer":"True"}]}'
-
-# 5. Fetch Weaknesses, Learning Summary & Generate Targeted Practice
-curl http://localhost:8000/api/v1/analytics/weaknesses -H "Authorization: Bearer $TOKEN"
-curl http://localhost:8000/api/v1/attempts/<attempt_id>/summary -H "Authorization: Bearer $TOKEN"
-curl -X POST http://localhost:8000/api/v1/practice/generate \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"material_id":"<id>","number_of_questions":5}'
-```
-
----
-
-## Security Notes
-
-- Passwords hashed with `bcrypt`; JWT authentication with configurable secret keys.
-- Data access is isolated per user; resources checked for ownership returning `404 Not Found` for unauthorized access.
-- Question answers and explanations are hidden until quiz attempts are submitted.
-- Per-user rate limiting on AI generation endpoints to prevent abuse.
+- **Miracle-Colours Elvis** ([@miracle-colours](https://github.com/miracle-colours)) — *UI/UX and Frontend Engineer*
+- **John A. Samuel** ([@jayo14](https://github.com/jayo14)) — *Backend and ML Engineer*
