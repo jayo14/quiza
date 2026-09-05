@@ -7,8 +7,8 @@ export default function ServerWarmupBanner() {
   const [status, setStatus] = useState("idle"); // 'idle' | 'warming' | 'ready' | 'hidden'
 
   useEffect(() => {
-    // Use API_BASE_URL/health (e.g. https://quiza-urmm.onrender.com/api/v1/health) to avoid adblocker filters targeting root /health
-    const healthUrl = `${API_BASE_URL.replace(/\/$/, "")}/health`;
+    // Use API_BASE_URL/ping (e.g. https://quiza-urmm.onrender.com/api/v1/ping) to prevent browser adblockers from blocking health checks
+    const healthUrl = `${API_BASE_URL}/ping`;
 
     let isMounted = true;
     let timerId = null;

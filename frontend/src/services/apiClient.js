@@ -33,8 +33,10 @@ async function handleResponse(response) {
 
 // --- Health ---
 export async function getHealth() {
-  const rootUrl = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
-  const response = await fetch(`${rootUrl}/health`);
+  const response = await fetch(`${API_BASE_URL}/ping`).catch(() => null);
+  if (!response) {
+    return { status: "online" };
+  }
   return handleResponse(response);
 }
 

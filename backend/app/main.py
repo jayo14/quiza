@@ -41,6 +41,8 @@ def root_redirect() -> RedirectResponse:
 
 
 @app.get("/health", tags=["health"])
+@app.get("/ping", tags=["health"])
 @app.get(f"{settings.api_v1_prefix}/health", tags=["health"])
+@app.get(f"{settings.api_v1_prefix}/ping", tags=["health"])
 def health() -> dict[str, str]:
     return {"status": "ok"}
