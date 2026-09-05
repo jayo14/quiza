@@ -30,13 +30,14 @@ Quiza is built with a modern full-stack architecture combining high-performance 
 
 ### 1. Frontend Engine (UI/UX)
 - **Framework**: React 19 with Vite for ultra-fast HMR and bundle optimization.
+- **State Management**: React Context API (`AuthContext`) for global auth and user session management.
 - **Routing & Navigation**: React Router v7.
 - **Styling & Components**: Custom CSS system engineered for dark-mode aesthetic, responsive dashboards, interactive quiz interfaces, and server warmup toasts.
 - **Icons & Visuals**: Lucide React.
 
 ### 2. Backend API & Core System
 - **Framework**: FastAPI (Python 3.10+) utilizing asynchronous handlers for fast document processing and AI streaming.
-- **Database & Storage**: SQLAlchemy 2.0 ORM paired with Alembic migrations. Supports SQLite for zero-config local development and PostgreSQL with `pgvector` for production scalability.
+- **Database & Storage**: We used SQLAlchemy 2.0 with Alembic migrations, and chose Supabase to store both raw file uploads and our production vector database using `pgvector` (with SQLite for zero-config local development).
 - **Authentication**: Secure JWT authentication (`python-jose`) with bcrypt password hashing and token refresh cycles.
 - **Document Extractors**: PyMuPDF (`fitz`) for PDF parsing, `python-docx` for document processing, and `pytesseract` for image-to-text OCR.
 
