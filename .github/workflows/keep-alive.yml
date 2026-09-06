@@ -16,9 +16,15 @@ jobs:
           if [ -z "$URL" ]; then
             URL="https://quiza-urmm.onrender.com"
           fi
+          if [[ "$URL" != http://* && "$URL" != https://* ]]; then
+            URL="https://$URL"
+          fi
           HEALTH_URL="${URL%/}/health"
           echo "Pinging backend health endpoint: $HEALTH_URL"
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$HEALTH_URL")
+          if ! STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "$HEALTH_URL"); then
+            echo "Health check request timed out or failed while backend may be cold-starting."
+            exit 0
+          fi
           echo "HTTP Status Code: $STATUS"
           if [ "$STATUS" -eq 200 ]; then
             echo "Backend is active and healthy."
