@@ -110,6 +110,13 @@ export async function listMaterials() {
   return handleResponse(response);
 }
 
+export async function getMaterial(materialId) {
+  const response = await fetch(`${API_BASE_URL}/materials/${materialId}`, {
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+}
+
 export async function deleteMaterial(materialId) {
   const response = await fetch(`${API_BASE_URL}/materials/${materialId}`, {
     method: "DELETE",

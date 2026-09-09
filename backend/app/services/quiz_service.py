@@ -26,6 +26,13 @@ async def generate_quiz(
         raise ValidationFailedError("At least one material_id must be provided for quiz generation.")
 
     materials = [material_service.get_owned_material(db, user=user, material_id=mid) for mid in target_ids]
+    failed = [m for m in materials if m.status == MaterialStatus.FAILED]
+    if failed:
+        details = ", ".join(f"{m.filename} ({m.processing_error or 'Processing failed'})" for m in failed)
+        raise ValidationFailedError(
+            f"Study material processing failed: {details}. Please retry uploading or choose another file."
+        )
+
     unready = [m.filename for m in materials if m.status != MaterialStatus.READY]
     if unready:
         raise ValidationFailedError(

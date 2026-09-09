@@ -1,3 +1,5 @@
+import asyncio
+
 from google import genai
 from google.genai.errors import APIError
 
@@ -26,24 +28,25 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
         if not texts:
             return []
         try:
-            embeddings: list[list[float]] = []
-            # Batch process texts with Google GenAI SDK
-            for text in texts:
-                response = await self._client.aio.models.embed_content(
-                    model=self._model,
-                    contents=text,
-                )
-                values = None
-                if hasattr(response, "embedding") and response.embedding and getattr(response.embedding, "values", None):
-                    values = response.embedding.values
-                elif hasattr(response, "embeddings") and response.embeddings and len(response.embeddings) > 0:
-                    values = response.embeddings[0].values
+            sem = asyncio.Semaphore(5)
 
-                if values:
-                    embeddings.append(list(values))
-                else:
+            async def _embed_single(text: str) -> list[float]:
+                async with sem:
+                    response = await self._client.aio.models.embed_content(
+                        model=self._model,
+                        contents=text,
+                    )
+                    values = None
+                    if hasattr(response, "embedding") and response.embedding and getattr(response.embedding, "values", None):
+                        values = response.embedding.values
+                    elif hasattr(response, "embeddings") and response.embeddings and len(response.embeddings) > 0:
+                        values = response.embeddings[0].values
+
+                    if values:
+                        return list(values)
                     raise AIServiceError("The AI provider returned empty embeddings.")
-            return embeddings
+
+            return await asyncio.gather(*[_embed_single(text) for text in texts])
         except APIError as exc:
             raise AIServiceError(f"The AI provider returned an error: {exc}") from exc
         except Exception as exc:

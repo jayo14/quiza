@@ -19,9 +19,27 @@ class Settings(BaseSettings):
     refresh_token_expire_minutes: int = 60 * 24 * 30
     password_reset_token_expire_minutes: int = 30
 
+    # Gemini
     gemini_api_key: str | None = None
     gemini_chat_model: str = "gemini-3.6-flash"
+    gemini_fallback_models: str = "gemini-2.5-flash,gemini-1.5-flash,gemini-2.5-pro"
     gemini_embedding_model: str = "gemini-embedding-001"
+
+    # OpenAI
+    openai_api_key: str | None = None
+    openai_base_url: str | None = None
+    openai_chat_model: str = "gpt-4o-mini"
+    openai_fallback_models: str = "gpt-4o-mini,gpt-4o"
+
+    # NVIDIA BUILD NIM
+    nvidia_api_key: str | None = None
+    nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
+    nvidia_chat_model: str = "meta/llama-3.3-70b-instruct"
+    nvidia_fallback_models: str = "meta/llama-3.3-70b-instruct,mistralai/mistral-large-2-instruct,deepseek-ai/deepseek-r1"
+
+    # Provider failover chain & health management
+    llm_provider_priority: str = "gemini,openai,nvidia"
+    llm_model_cooldown_seconds: int = 60
 
     storage_backend: str = "supabase"
     storage_dir: str = "./storage"
