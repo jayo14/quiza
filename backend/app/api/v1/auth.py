@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -35,14 +35,14 @@ def me(current_user: User = Depends(get_current_user)) -> User:
 
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
 def forgot_password(
-    payload: ForgotPasswordRequest, db: Session = Depends(get_db)
+    payload: ForgotPasswordRequest, 
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
 ) -> ForgotPasswordResponse:
-    reset_token = auth_service.request_password_reset(db, payload.email)
+    auth_service.request_password_reset(db, payload.email, background_tasks)
     # Always return a generic message so this endpoint can't be used to enumerate
-    # registered emails. The token is only echoed back outside production, where
-    # there is no email provider wired up yet to deliver it out of band.
-    exposed_token = None if settings.is_production else reset_token
-    return ForgotPasswordResponse(reset_token=exposed_token)
+    # registered emails.
+    return ForgotPasswordResponse()
 
 
 @router.post("/reset-password", status_code=204)

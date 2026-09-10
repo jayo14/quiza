@@ -31,9 +31,6 @@ class ForgotPasswordRequest(BaseModel):
 
 class ForgotPasswordResponse(BaseModel):
     message: str = "If that email is registered, a reset link has been sent."
-    # Only populated outside production, where there is no email provider wired up yet,
-    # so the reset flow can still be exercised end to end.
-    reset_token: str | None = None
 
 
 class ResetPasswordRequest(BaseModel):
