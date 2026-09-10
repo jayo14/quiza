@@ -62,6 +62,14 @@ class Settings(BaseSettings):
     vector_store_backend: str = "pgvector"
 
     ai_rate_limit_per_minute: int = 10
+    # SMTP Settings
+    smtp_server: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
+    smtp_from_name: str = "Quiza"
+
 
     cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:3000,https://quiza-urmm.onrender.com"
 
