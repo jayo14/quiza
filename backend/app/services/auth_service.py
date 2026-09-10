@@ -58,12 +58,16 @@ def sign_in(db: Session, payload: SignInRequest) -> AuthResponse:
 
 def request_password_reset(db: Session, email: str) -> str | None:
     from app.core.config import settings
+    from app.services.email_service import send_password_reset_email
+
 
     user = get_user_by_email(db, email)
     if not user:
         return None
     token = create_password_reset_token(user.id)
     reset_link = f"{settings.frontend_url}/reset-password?token={token}"
+    send_password_reset_email(user.email, reset_link)
+
     return token
 
 
