@@ -70,6 +70,8 @@ class Settings(BaseSettings):
     smtp_from_email: str | None = None
     smtp_from_name: str = "Quiza"
 
+    frontend_url: str = "http://localhost:5173"
+
 
     cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:3000,https://quiza-urmm.onrender.com"
 
