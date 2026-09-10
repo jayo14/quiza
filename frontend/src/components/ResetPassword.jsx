@@ -12,6 +12,9 @@ import { API_BASE_URL } from "../config/api";
 import "./ResetPassword.css";
 
 function ResetPassword() {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token") || "";
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
