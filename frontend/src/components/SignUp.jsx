@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import "./SignUp.css";
 
 function SignUp() {
-  const { signUp } = useAuth();
+  const { signUp, signInWithGoogle } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -155,7 +155,7 @@ function SignUp() {
           <button
             type="button"
             className="signup-google-btn"
-            onClick={() => navigate("/")}
+            onClick={signInWithGoogle}
           >
             <svg className="signup-google-icon" viewBox="0 0 24 24">
               <path

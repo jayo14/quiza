@@ -24,7 +24,9 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
 
 
-def verify_password(plain_password: str, password_hash: str) -> bool:
+def verify_password(plain_password: str, password_hash: str | None) -> bool:
+    if not password_hash:
+        return False
     password_bytes = plain_password.encode("utf-8")[:_BCRYPT_MAX_BYTES]
     return bcrypt.checkpw(password_bytes, password_hash.encode("utf-8"))
 

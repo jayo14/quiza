@@ -40,12 +40,13 @@ def test_me_returns_current_user(client, signup):
 
 
 def test_forgot_and_reset_password_flow(client, signup):
-    signup(email="d@example.com", password="oldpassword1")
+    _, user = signup(email="d@example.com", password="oldpassword1")
 
     forgot = client.post("/api/v1/auth/forgot-password", json={"email": "d@example.com"})
     assert forgot.status_code == 200
-    reset_token = forgot.json()["reset_token"]
-    assert reset_token
+
+    from app.core.security import create_password_reset_token
+    reset_token = create_password_reset_token(user["id"])
 
     reset = client.post(
         "/api/v1/auth/reset-password", json={"token": reset_token, "new_password": "newpassword1"}
@@ -62,4 +63,4 @@ def test_forgot_and_reset_password_flow(client, signup):
 def test_forgot_password_does_not_reveal_whether_email_exists(client):
     response = client.post("/api/v1/auth/forgot-password", json={"email": "nobody@example.com"})
     assert response.status_code == 200
-    assert response.json()["reset_token"] is None
+    assert "reset link has been sent" in response.json()["message"]

@@ -12,7 +12,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models.user import User
-from app.schemas.auth import AuthResponse, SignInRequest, SignUpRequest, TokenResponse
+from app.schemas.auth import AuthResponse, GoogleSignInRequest, SignInRequest, SignUpRequest, TokenResponse
 
 
 def _issue_tokens(user: User) -> TokenResponse:
@@ -86,3 +86,47 @@ def reset_password(db: Session, token: str, new_password: str) -> None:
     user.password_hash = hash_password(new_password)
     db.add(user)
     db.commit()
+
+def google_sign_in(db: Session, payload: GoogleSignInRequest) -> AuthResponse:
+    from app.core.config import settings
+    import jwt
+    import uuid
+
+    try:
+        # Verify the Supabase JWT
+        # Supabase signs JWTs with the SUPABASE_JWT_SECRET
+        jwt_secret = settings.supabase_anon_key if not settings.effective_supabase_key else settings.effective_supabase_key
+        # Wait, Supabase JWT secret is different from anon key. Let's assume it's set in env, or we don't verify locally, we use supabase client.
+        # It's better to verify using jwt library if we have the secret, otherwise use supabase admin client.
+        # Supabase JS on frontend actually gives the session. The backend should verify the token.
+        # But wait, without SUPABASE_JWT_SECRET, we can just use the supabase client to get the user.
+        from supabase import create_client, Client
+        supabase: Client = create_client(settings.effective_supabase_url, settings.effective_supabase_key)
+        
+        # Verify token by getting the user
+        user_resp = supabase.auth.get_user(payload.token)
+        if not user_resp or not user_resp.user:
+            raise UnauthorizedError("Invalid Google token.")
+            
+        supabase_user = user_resp.user
+        email = supabase_user.email
+        name = supabase_user.user_metadata.get("full_name", email.split("@")[0])
+        
+    except Exception as e:
+        raise UnauthorizedError(f"Google sign in failed: {str(e)}")
+
+    user = get_user_by_email(db, email)
+    if not user:
+        user = User(
+            email=email.lower(),
+            password_hash=None,
+            name=name,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    if not user.is_active:
+        raise UnauthorizedError("This account has been deactivated.")
+
+    return AuthResponse(user=user, tokens=_issue_tokens(user))

@@ -34,6 +34,34 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const checkAuth = async () => {
+      // Check for Supabase session first (after Google OAuth redirect)
+      try {
+        const { supabase } = await import("../config/supabase");
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session && session.access_token) {
+          // Send Supabase token to our backend
+          const response = await fetch(`${API_BASE_URL}/auth/google`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token: session.access_token }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            saveAuth(data.user, data.tokens.access_token, data.tokens.refresh_token);
+            // Sign out of Supabase to clean up since we have our custom JWTs now
+            await supabase.auth.signOut();
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Supabase session check failed:", error);
+      }
+
       const storedToken = localStorage.getItem("access_token");
       if (!storedToken) {
         setUser(null);
@@ -68,6 +96,16 @@ export function AuthProvider({ children }) {
 
     checkAuth();
   }, [signOut]);
+
+  const signInWithGoogle = async () => {
+    const { supabase } = await import("../config/supabase");
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+  };
 
   const signIn = async (email, password) => {
     const response = await fetch(`${API_BASE_URL}/auth/signin`, {
@@ -121,6 +159,7 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!token && !!user,
     loading,
     signIn,
+    signInWithGoogle,
     signUp,
     signOut,
   };

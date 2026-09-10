@@ -8,6 +8,7 @@ from app.schemas.auth import (
     AuthResponse,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
+    GoogleSignInRequest,
     ResetPasswordRequest,
     SignInRequest,
     SignUpRequest,
@@ -48,3 +49,7 @@ def forgot_password(
 @router.post("/reset-password", status_code=204)
 def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)) -> None:
     auth_service.reset_password(db, payload.token, payload.new_password)
+
+@router.post("/google", response_model=AuthResponse)
+def google_signin(payload: GoogleSignInRequest, db: Session = Depends(get_db)) -> AuthResponse:
+    return auth_service.google_sign_in(db, payload)
