@@ -44,7 +44,7 @@ function ResetPassword() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            token: "null",
+            token: token,
             new_password: password,
           }),
         },
