@@ -107,3 +107,23 @@ def send_password_reset_email(to_email: str, reset_link: str) -> None:
     </body>
     </html>
     """
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_email or settings.smtp_username}>"
+    msg["To"] = to_email
+
+    msg.attach(MIMEText(html_content, "html"))
+
+    try:
+        with smtplib.SMTP(settings.smtp_server, settings.smtp_port) as server:
+            server.starttls()
+            server.login(settings.smtp_username, settings.smtp_password)
+            server.sendmail(
+                msg["From"],
+                [to_email],
+                msg.as_string()
+            )
+        logger.info(f"Password reset email sent to {to_email}")
+    except Exception as e:
+        logger.error(f"Failed to send email to {to_email}: {e}")
