@@ -1,22 +1,19 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, X, Sparkles, CheckCircle, Loader2, RotateCcw, AlertCircle, Hash } from "lucide-react";
-import { uploadMaterial, generateQuiz, deleteMaterial, getMaterial } from "../services/apiClient";
+import { Upload, X, Sparkles, CheckCircle, Loader2, RotateCcw, Hash, FileText } from "lucide-react";
+import { toast } from "sonner";
+import { uploadMaterial, generateQuizBackground, deleteMaterial, getQuiz } from "../services/apiClient";
 import "./UploadMaterial.css";
 
 function UploadMaterial() {
   const [fileList, setFileList] = useState([]);
   const [error, setError] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isGenerated, setIsGenerated] = useState(false);
   const [generatedQuizId, setGeneratedQuizId] = useState(null);
   const [numQuestions, setNumQuestions] = useState(10);
   const navigate = useNavigate();
-
-  // Track active pollers so they can be cancelled when files are removed or retried
   const pollersRef = useRef({});
 
-  // Clean up all pollers on unmount
   useEffect(() => {
     return () => {
       Object.values(pollersRef.current).forEach((timerId) => clearTimeout(timerId));
@@ -48,7 +45,7 @@ function UploadMaterial() {
           totalSizeMB: formatSize(file.size),
           currentLoadedMB: formatSize(0),
           progress: 0,
-          status: "uploading", // "uploading" | "processing" | "ready" | "error" | "cancelled"
+          status: "uploading",
           materialId: null,
           error: null,
           formatSize,
@@ -69,91 +66,10 @@ function UploadMaterial() {
     });
   };
 
-  const pollMaterialStatus = (itemId, materialId) => {
-    if (pollersRef.current[itemId]) {
-      clearTimeout(pollersRef.current[itemId]);
-      delete pollersRef.current[itemId];
-    }
-
-    const maxAttempts = 60; // Up to 2 minutes of polling
-    let attempts = 0;
-
-    const checkStatus = async () => {
-      attempts++;
-      try {
-        const mat = await getMaterial(materialId);
-        if (mat.status === "ready") {
-          delete pollersRef.current[itemId];
-          setFileList((prev) =>
-            prev.map((f) =>
-              f.id === itemId
-                ? {
-                    ...f,
-                    status: "ready",
-                    error: null,
-                  }
-                : f
-            )
-          );
-        } else if (mat.status === "failed") {
-          delete pollersRef.current[itemId];
-          setFileList((prev) =>
-            prev.map((f) =>
-              f.id === itemId
-                ? {
-                    ...f,
-                    status: "error",
-                    error: mat.processing_error || "Content processing failed",
-                  }
-                : f
-            )
-          );
-        } else {
-          // Still uploaded or processing
-          if (attempts < maxAttempts) {
-            pollersRef.current[itemId] = setTimeout(checkStatus, 2000);
-          } else {
-            delete pollersRef.current[itemId];
-            setFileList((prev) =>
-              prev.map((f) =>
-                f.id === itemId
-                  ? {
-                      ...f,
-                      status: "error",
-                      error: "Processing timed out. Please retry.",
-                    }
-                  : f
-              )
-            );
-          }
-        }
-      } catch (err) {
-        if (attempts < maxAttempts) {
-          pollersRef.current[itemId] = setTimeout(checkStatus, 2500);
-        }
-      }
-    };
-
-    pollersRef.current[itemId] = setTimeout(checkStatus, 1500);
-  };
-
   const startSingleFileUpload = async (item) => {
-    // Clear any previous poll timer
-    if (pollersRef.current[item.id]) {
-      clearTimeout(pollersRef.current[item.id]);
-      delete pollersRef.current[item.id];
-    }
-
     setFileList((prev) =>
       prev.map((f) =>
-        f.id === item.id
-          ? {
-              ...f,
-              status: "uploading",
-              progress: 0,
-              error: null,
-            }
-          : f
+        f.id === item.id ? { ...f, status: "uploading", progress: 0, error: null } : f
       )
     );
 
@@ -165,11 +81,7 @@ function UploadMaterial() {
           setFileList((prev) =>
             prev.map((f) =>
               f.id === item.id
-                ? {
-                    ...f,
-                    progress: percent,
-                    currentLoadedMB: f.formatSize ? f.formatSize(loaded) : `${(loaded / (1024 * 1024)).toFixed(2)} MB`,
-                  }
+                ? { ...f, progress: percent, currentLoadedMB: f.formatSize ? f.formatSize(loaded) : `${(loaded / (1024 * 1024)).toFixed(2)} MB` }
                 : f
             )
           );
@@ -182,56 +94,32 @@ function UploadMaterial() {
 
       const material = await task.promise;
 
-      if (material.status === "ready") {
-        setFileList((prev) =>
-          prev.map((f) =>
-            f.id === item.id
-              ? {
-                  ...f,
-                  progress: 100,
-                  currentLoadedMB: f.totalSizeMB,
-                  status: "ready",
-                  materialId: material.id,
-                  cancelUpload: null,
-                }
-              : f
-          )
-        );
-      } else {
-        setFileList((prev) =>
-          prev.map((f) =>
-            f.id === item.id
-              ? {
-                  ...f,
-                  progress: 100,
-                  currentLoadedMB: f.totalSizeMB,
-                  status: "processing",
-                  materialId: material.id,
-                  cancelUpload: null,
-                }
-              : f
-          )
-        );
-        pollMaterialStatus(item.id, material.id);
-      }
+      setFileList((prev) =>
+        prev.map((f) =>
+          f.id === item.id
+            ? {
+                ...f,
+                progress: 100,
+                currentLoadedMB: f.totalSizeMB,
+                status: "uploaded",
+                materialId: material.id,
+                cancelUpload: null,
+              }
+            : f
+        )
+      );
     } catch (err) {
       const isCancelled = err.message === "Upload cancelled";
       const errMsg = isCancelled ? "Upload cancelled" : (err.message || "Upload failed");
 
       if (!isCancelled) {
         console.error(`Upload error for ${item.name}:`, err);
-        setError(`Failed to upload ${item.name}: ${errMsg}`);
       }
 
       setFileList((prev) =>
         prev.map((f) =>
           f.id === item.id
-            ? {
-                ...f,
-                status: isCancelled ? "cancelled" : "error",
-                error: errMsg,
-                cancelUpload: null,
-              }
+            ? { ...f, status: isCancelled ? "cancelled" : "error", error: errMsg, cancelUpload: null }
             : f
         )
       );
@@ -266,25 +154,24 @@ function UploadMaterial() {
   };
 
   const isAnyUploading = fileList.some((item) => item.status === "uploading");
-  const isAnyProcessing = fileList.some((item) => item.status === "processing");
   const hasFailed = fileList.some((item) => item.status === "error" || item.status === "cancelled");
-  const allReady =
-    fileList.length > 0 && fileList.every((item) => item.status === "ready");
+  const allUploaded =
+    fileList.length > 0 && fileList.every((item) => item.status === "uploaded" || item.status === "error" || item.status === "cancelled");
+  const hasUploadedFiles = fileList.some((item) => item.status === "uploaded");
 
   const handleGenerateQuiz = async () => {
-    if (!allReady) return;
+    if (!hasUploadedFiles) return;
 
     setIsGenerating(true);
-    setIsGenerated(false);
     setError("");
 
     try {
       const readyMaterialIds = fileList
-        .filter((f) => f.status === "ready")
+        .filter((f) => f.status === "uploaded")
         .map((f) => f.materialId)
         .filter(Boolean);
 
-      const quiz = await generateQuiz({
+      const quiz = await generateQuizBackground({
         material_id: readyMaterialIds[0],
         material_ids: readyMaterialIds,
         number_of_questions: numQuestions,
@@ -293,35 +180,58 @@ function UploadMaterial() {
       });
 
       setGeneratedQuizId(quiz.id);
-      setIsGenerated(true);
+      toast.info("Quiz generation started! Processing in background...");
+
+      pollQuizStatus(quiz.id);
     } catch (err) {
       console.error("Quiz generation failed:", err);
-      if (err.message && err.message.toLowerCase().includes("still processing")) {
-        setError("Study material is still finalizing indexing. Please wait a moment and click Generate Quiz again.");
-      } else {
-        setError(err.message || "Failed to generate quiz. Please try again.");
-      }
-    } finally {
+      setError(err.message || "Failed to start quiz generation.");
       setIsGenerating(false);
     }
   };
 
-  const handleStartQuiz = () => {
-    if (generatedQuizId) {
-      navigate(`/quiz?id=${generatedQuizId}`);
-    } else {
-      navigate("/quizzes");
-    }
+  const pollQuizStatus = (quizId) => {
+    const maxAttempts = 120; // 4 minutes max
+    let attempts = 0;
+
+    const check = async () => {
+      attempts++;
+      try {
+        const quiz = await getQuiz(quizId);
+        if (quiz.status === "ready") {
+          toast.success("Quiz generated! Redirecting...");
+          setTimeout(() => navigate(`/quiz?id=${quizId}`), 1000);
+          return;
+        }
+        if (quiz.status === "failed") {
+          toast.error(quiz.generation_error || "Quiz generation failed.");
+          setIsGenerating(false);
+          return;
+        }
+        if (attempts < maxAttempts) {
+          pollersRef.current["quiz-poll"] = setTimeout(check, 2000);
+        } else {
+          toast.error("Quiz generation timed out.");
+          setIsGenerating(false);
+        }
+      } catch {
+        if (attempts < maxAttempts) {
+          pollersRef.current["quiz-poll"] = setTimeout(check, 3000);
+        }
+      }
+    };
+
+    pollersRef.current["quiz-poll"] = setTimeout(check, 2000);
   };
 
   return (
     <section className="upload-material">
       <div className="upload-material__header">
         <h1>Upload Material</h1>
-        <p>Upload your study material and let Quiza turn it into a quiz.</p>
+        <p>Upload your study material, then generate a quiz from it.</p>
       </div>
 
-      {!isGenerating && !isGenerated && (
+      {!isGenerating && !generatedQuizId && (
         <>
           <div className="upload-material__box">
             <div className="upload-material__icon">
@@ -351,7 +261,7 @@ function UploadMaterial() {
 
           {fileList.length > 0 && (
             <div className="upload-material__files">
-              <h3>Selected Materials</h3>
+              <h3>Uploaded Materials</h3>
 
               {fileList.map((item) => (
                 <div className="upload-material__file-wrapper" key={item.id}>
@@ -362,18 +272,14 @@ function UploadMaterial() {
                         className={`upload-material__file-status ${
                           item.status === "error" || item.status === "cancelled"
                             ? "upload-material__file-status--error"
-                            : item.status === "processing"
-                            ? "upload-material__file-status--processing"
-                            : item.status === "ready"
+                            : item.status === "uploaded"
                             ? "upload-material__file-status--ready"
                             : ""
                         }`}
                       >
                         {item.status === "uploading" &&
                           `${item.currentLoadedMB} / ${item.totalSizeMB} (${item.progress}%)`}
-                        {item.status === "processing" &&
-                          `${item.totalSizeMB} · Processing & indexing content...`}
-                        {item.status === "ready" && `${item.totalSizeMB} · Ready`}
+                        {item.status === "uploaded" && `${item.totalSizeMB} · Uploaded`}
                         {item.status === "cancelled" && "Upload cancelled"}
                         {item.status === "error" && (item.error || "Upload failed")}
                       </span>
@@ -381,25 +287,10 @@ function UploadMaterial() {
 
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       {item.status === "uploading" && (
-                        <Loader2
-                          size={16}
-                          className="upload-material__spin"
-                          style={{ color: "var(--primary)" }}
-                        />
+                        <Loader2 size={16} className="upload-material__spin" style={{ color: "var(--primary)" }} />
                       )}
-                      {item.status === "processing" && (
-                        <Loader2
-                          size={16}
-                          className="upload-material__spin"
-                          style={{ color: "#f59e0b" }}
-                          title="Extracting and indexing text..."
-                        />
-                      )}
-                      {item.status === "ready" && (
-                        <CheckCircle
-                          size={18}
-                          style={{ color: "#10b981" }}
-                        />
+                      {item.status === "uploaded" && (
+                        <CheckCircle size={18} style={{ color: "#10b981" }} />
                       )}
                       {(item.status === "error" || item.status === "cancelled") && (
                         <button
@@ -407,7 +298,6 @@ function UploadMaterial() {
                           className="upload-material__retry-btn"
                           onClick={() => handleRetry(item)}
                           title="Retry upload"
-                          aria-label={`Retry upload for ${item.name}`}
                         >
                           <RotateCcw size={15} />
                         </button>
@@ -434,7 +324,7 @@ function UploadMaterial() {
                 </div>
               ))}
 
-              {allReady && (
+              {hasUploadedFiles && (
                 <div className="upload-material__settings">
                   <div className="upload-material__field">
                     <label htmlFor="num-questions">
@@ -458,18 +348,16 @@ function UploadMaterial() {
                 type="button"
                 className="upload-material__generate"
                 onClick={handleGenerateQuiz}
-                disabled={!allReady || isAnyUploading || isAnyProcessing}
+                disabled={!hasUploadedFiles || isAnyUploading}
               >
-                {isAnyUploading || isAnyProcessing ? (
+                {isAnyUploading ? (
                   <Loader2 size={18} className="upload-material__spin" />
                 ) : (
                   <Sparkles size={18} />
                 )}
                 {isAnyUploading
-                  ? "Uploading Material..."
-                  : isAnyProcessing
-                  ? "Processing Material..."
-                  : hasFailed && !allReady
+                  ? "Uploading..."
+                  : hasFailed && !hasUploadedFiles
                   ? "Retry Failed Files to Continue"
                   : "Generate Quiz"}
               </button>
@@ -487,33 +375,13 @@ function UploadMaterial() {
           <h2>Generating your quiz...</h2>
 
           <p>
-            Quiza is analyzing your study material and creating questions for
-            you.
+            Your materials are being processed and questions are being generated.
+            You can safely navigate away — we'll notify you when it's ready.
           </p>
 
           <div className="upload-material__loader">
             <span></span>
           </div>
-        </div>
-      )}
-
-      {isGenerated && (
-        <div className="upload-material__generation">
-          <div className="upload-material__success-icon">
-            <CheckCircle size={30} />
-          </div>
-
-          <h2>Quiz generated successfully!</h2>
-
-          <p>Your study material has been turned into a quiz.</p>
-
-          <button
-            type="button"
-            className="upload-material__generate"
-            onClick={handleStartQuiz}
-          >
-            Start Quiz
-          </button>
         </div>
       )}
     </section>
