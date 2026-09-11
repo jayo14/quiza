@@ -147,6 +147,27 @@ export async function generateQuiz({
   return handleResponse(response);
 }
 
+export async function generateQuizBackground({
+  material_id,
+  material_ids,
+  number_of_questions = 10,
+  difficulty = "medium",
+  question_types = ["multiple_choice"],
+}) {
+  const response = await fetch(`${API_BASE_URL}/quizzes/generate-background`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      material_id,
+      material_ids,
+      number_of_questions,
+      difficulty,
+      question_types,
+    }),
+  });
+  return handleResponse(response);
+}
+
 export async function listQuizzes() {
   const response = await fetch(`${API_BASE_URL}/quizzes`, {
     headers: getAuthHeaders(),
