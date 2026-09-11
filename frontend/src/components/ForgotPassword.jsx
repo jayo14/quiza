@@ -75,14 +75,6 @@ function ForgotPassword() {
               </p>
             </div>
 
-            <Link
-              to="/reset-password"
-              className="forgot-submit-btn"
-              style={{ marginBottom: "16px" }}
-            >
-              Continue to Set New Password <ArrowRight size={16} />
-            </Link>
-
             <div className="forgot-footer">
               <Link to="/signin" className="forgot-back-link">
                 <ArrowLeft size={16} /> Back to Sign In
