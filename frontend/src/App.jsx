@@ -17,6 +17,7 @@ import SignUp from "./components/SignUp";
 import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
 
+import { Toaster } from "sonner";
 import ServerWarmupBanner from "./components/ServerWarmupBanner";
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -56,6 +57,7 @@ function DashboardLayout() {
 function App() {
   return (
     <AuthProvider>
+      <Toaster position="top-center" />
       <ServerWarmupBanner />
       <BrowserRouter>
         <Routes>
