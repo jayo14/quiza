@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, UploadFile
 from sqlalchemy.orm import Session
 
+MAX_UPLOAD_SIZE = 25 * 1024 * 1024
+
 from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
 from app.schemas.material import MaterialRead
@@ -16,7 +18,16 @@ async def upload_material(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> MaterialRead:
+    if file.size and file.size > MAX_UPLOAD_SIZE:
+        from app.core.exceptions import ValidationFailedError
+        raise ValidationFailedError(f"File too large. Maximum size is {MAX_UPLOAD_SIZE // (1024*1024)} MB.")
+
     content = await file.read()
+
+    if len(content) > MAX_UPLOAD_SIZE:
+        from app.core.exceptions import ValidationFailedError
+        raise ValidationFailedError(f"File too large. Maximum size is {MAX_UPLOAD_SIZE // (1024*1024)} MB.")
+
     material = material_service.create_material(
         db,
         user=current_user,

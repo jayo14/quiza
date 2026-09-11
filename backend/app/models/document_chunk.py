@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, Index, Integer, String, Text
+from sqlalchemy import ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -11,7 +11,7 @@ class DocumentChunk(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     __tablename__ = "document_chunks"
     __table_args__ = (
-        Index("ix_document_chunks_material_index", "material_id", "chunk_index"),
+        UniqueConstraint("material_id", "chunk_index", name="uq_document_chunks_material_index"),
         Index("ix_document_chunks_user_material", "user_id", "material_id"),
     )
 
