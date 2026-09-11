@@ -9,6 +9,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { API_BASE_URL } from "../config/api";
+import { toast } from "sonner";
 import "./ResetPassword.css";
 
 function ResetPassword() {
@@ -29,7 +30,7 @@ function ResetPassword() {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      alert("Passwords do not match.");
+      toast.error("Passwords do not match.");
       return;
     }
 
@@ -57,11 +58,11 @@ function ResetPassword() {
       }
 
       // 204 = password was successfully changed
-
+      toast.success("Password updated successfully!");
       setSuccess(true);
     } catch (error) {
       console.error("Reset password error:", error);
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
