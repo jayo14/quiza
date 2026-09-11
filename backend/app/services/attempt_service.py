@@ -24,6 +24,19 @@ def start_attempt(db: Session, *, user: User, quiz_id: str) -> QuizAttempt:
     if quiz.status != QuizStatus.READY:
         raise ValidationFailedError("This quiz isn't ready to be attempted yet.")
 
+    existing = db.execute(
+        select(QuizAttempt)
+        .where(
+            QuizAttempt.quiz_id == quiz_id,
+            QuizAttempt.user_id == user.id,
+            QuizAttempt.status == AttemptStatus.IN_PROGRESS,
+        )
+        .with_for_update()
+    ).scalar_one_or_none()
+
+    if existing:
+        return existing
+
     attempt = QuizAttempt(
         quiz_id=quiz.id,
         user_id=user.id,
@@ -60,7 +73,14 @@ def _is_correct(question: Question, selected_answer: str | None) -> bool:
 def submit_attempt(
     db: Session, *, user: User, attempt_id: str, submissions: list[AnswerSubmit]
 ) -> QuizAttempt:
-    attempt = get_owned_attempt(db, user=user, attempt_id=attempt_id)
+    attempt = db.execute(
+        select(QuizAttempt)
+        .where(QuizAttempt.id == attempt_id, QuizAttempt.user_id == user.id)
+        .with_for_update()
+    ).scalar_one_or_none()
+    if not attempt:
+        from app.core.exceptions import NotFoundError
+        raise NotFoundError("Attempt not found.")
     if attempt.status == AttemptStatus.COMPLETED:
         raise ValidationFailedError("This attempt has already been submitted.")
 

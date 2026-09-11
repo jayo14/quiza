@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, get_db
 from app.core.rate_limit import enforce_ai_rate_limit
+from app.core.exceptions import safe_error_message
 from app.models.user import User
 from app.schemas.attempt import AttemptRead
 from app.schemas.quiz import QuestionPublic, QuizDetail, QuizGenerateRequest, QuizRead
@@ -76,6 +77,7 @@ async def _run_background_quiz_generation(
             db,
             user_id=user_id,
             material_id=primary.id,
+            material_ids=material_ids,
             number_of_questions=number_of_questions,
             difficulty=diff,
             question_types=q_types,
@@ -110,11 +112,11 @@ async def _run_background_quiz_generation(
             quiz = db.get(Quiz, quiz_id)
             if quiz:
                 quiz.status = QuizStatus.FAILED
-                quiz.generation_error = str(exc)[:1000]
+                quiz.generation_error = safe_error_message(exc)
                 db.add(quiz)
                 db.commit()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.exception("Failed to update quiz status after generation failure for %s", quiz_id)
     finally:
         db.close()
 

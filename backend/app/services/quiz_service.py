@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.ai.quiz_generator import generate_quiz_questions
-from app.core.exceptions import NotFoundError, ValidationFailedError
+from app.core.exceptions import NotFoundError, ValidationFailedError, safe_error_message
 from app.models.enums import Difficulty, MaterialStatus, QuestionType, QuizStatus
 from app.models.question import Question
 from app.models.quiz import Quiz
@@ -63,6 +63,7 @@ async def generate_quiz(
             db,
             user_id=user.id,
             material_id=primary_material.id,
+            material_ids=target_ids,
             number_of_questions=effective_count,
             difficulty=difficulty,
             question_types=q_types,
@@ -93,9 +94,16 @@ async def generate_quiz(
     except Exception as exc:
         db.rollback()
         quiz.status = QuizStatus.FAILED
-        quiz.generation_error = str(exc)[:1000]
+        quiz.generation_error = safe_error_message(exc)
         db.add(quiz)
-        db.commit()
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            quiz.status = QuizStatus.FAILED
+            quiz.generation_error = safe_error_message(exc)
+            db.add(quiz)
+            db.commit()
         raise
 
 
