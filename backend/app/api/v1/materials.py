@@ -1,7 +1,6 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
+from fastapi import APIRouter, Depends, UploadFile
 from sqlalchemy.orm import Session
 
-from app.ai.rag.ingestion import run_ingestion_for_material
 from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
 from app.schemas.material import MaterialRead
@@ -12,7 +11,6 @@ router = APIRouter(prefix="/materials", tags=["materials"])
 
 @router.post("", response_model=MaterialRead, status_code=201)
 async def upload_material(
-    background_tasks: BackgroundTasks,
     file: UploadFile,
     title: str | None = None,
     current_user: User = Depends(get_current_user),
@@ -27,9 +25,6 @@ async def upload_material(
         content=content,
         title=title,
     )
-    # Parsing, chunking, embedding, and vector storage all happen off the request
-    # thread so upload latency doesn't scale with document size or AI provider RTT.
-    background_tasks.add_task(run_ingestion_for_material, material.id)
     return material
 
 
