@@ -48,6 +48,7 @@ class QuizRead(BaseModel):
     material_id: str
     title: str
     difficulty: Difficulty
+    number_of_questions: int
     status: QuizStatus
     generation_error: str | None
     created_at: datetime

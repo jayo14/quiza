@@ -172,6 +172,7 @@ async def generate_quiz_background(
         material_id=primary.id,
         title=title,
         difficulty=payload.difficulty,
+        number_of_questions=payload.number_of_questions,
         status=QuizStatus.GENERATING,
     )
     db.add(quiz)

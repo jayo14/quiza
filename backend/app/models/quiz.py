@@ -1,4 +1,4 @@
-from sqlalchemy import Enum, ForeignKey, Index, String
+from sqlalchemy import Enum, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -19,6 +19,7 @@ class Quiz(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     difficulty: Mapped[Difficulty] = mapped_column(
         Enum(Difficulty, native_enum=False, length=16), nullable=False
     )
+    number_of_questions: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
     status: Mapped[QuizStatus] = mapped_column(
         Enum(QuizStatus, native_enum=False, length=16), default=QuizStatus.GENERATING
     )
