@@ -19,12 +19,14 @@ _GEMINI_EMBEDDING_DIMENSIONS = {
     "embedding-001": 768,
 }
 
-# Separate cooldown tracker for embedding models (independent from chat cooldowns)
+# Gemini free tier: 100 embedding requests/min. Batch size stays well under.
+_EMBED_BATCH_SIZE = 20
+_EMBED_BATCH_DELAY = 1.5  # seconds between batches
+
 _embedding_cooldowns: dict[str, float] = {}
 
 
 def _parse_retry_delay(exc: Exception) -> float | None:
-    """Extract retryDelay from Gemini API error responses (e.g. '30s')."""
     msg = str(exc)
     match = re.search(r"retryDelay['\"]?\s*[:=]\s*['\"]?(\d+)s", msg)
     if match:
@@ -60,56 +62,76 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
     def dimensions(self) -> int:
         return _GEMINI_EMBEDDING_DIMENSIONS.get(self._model, 3072)
 
+    async def _embed_batch(self, texts: list[str]) -> list[list[float]]:
+        """Embed a single batch of texts concurrently (up to 5 at a time)."""
+        sem = asyncio.Semaphore(5)
+
+        async def _embed_one(text: str) -> list[float]:
+            async with sem:
+                response = await self._client.aio.models.embed_content(
+                    model=self._model,
+                    contents=text,
+                )
+                values = None
+                if hasattr(response, "embedding") and response.embedding and getattr(response.embedding, "values", None):
+                    values = response.embedding.values
+                elif hasattr(response, "embeddings") and response.embeddings and len(response.embeddings) > 0:
+                    values = response.embeddings[0].values
+
+                if values:
+                    return list(values)
+                raise AIServiceError("The AI provider returned empty embeddings.")
+
+        return await asyncio.gather(*[_embed_one(text) for text in texts])
+
     async def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
 
         max_retries = 3
-        for attempt in range(max_retries):
-            if _is_embedding_cooling_down(self._model):
-                cooldown_left = _embedding_cooldowns[self._model] - time.time()
-                if cooldown_left > 0:
-                    logger.info("Embedding model in cooldown, waiting %.0fs...", cooldown_left)
-                    await asyncio.sleep(min(cooldown_left, 30))
+        all_embeddings: list[list[float]] = []
 
-            try:
-                sem = asyncio.Semaphore(5)
+        for batch_start in range(0, len(texts), _EMBED_BATCH_SIZE):
+            batch = texts[batch_start : batch_start + _EMBED_BATCH_SIZE]
+            batch_num = (batch_start // _EMBED_BATCH_SIZE) + 1
+            total_batches = (len(texts) + _EMBED_BATCH_SIZE - 1) // _EMBED_BATCH_SIZE
 
-                async def _embed_single(text: str) -> list[float]:
-                    async with sem:
-                        response = await self._client.aio.models.embed_content(
-                            model=self._model,
-                            contents=text,
-                        )
-                        values = None
-                        if hasattr(response, "embedding") and response.embedding and getattr(response.embedding, "values", None):
-                            values = response.embedding.values
-                        elif hasattr(response, "embeddings") and response.embeddings and len(response.embeddings) > 0:
-                            values = response.embeddings[0].values
-
-                        if values:
-                            return list(values)
-                        raise AIServiceError("The AI provider returned empty embeddings.")
-
-                return await asyncio.gather(*[_embed_single(text) for text in texts])
-
-            except APIError as exc:
-                if _is_rate_limit_error(exc):
-                    retry_delay = _parse_retry_delay(exc)
-                    _set_embedding_cooldown(self._model, retry_delay)
-                    wait = retry_delay or min(2 ** attempt * 5, 60)
-                    logger.warning(
-                        "Embedding rate limited (attempt %d/%d). Waiting %.0fs before retry...",
-                        attempt + 1, max_retries, wait,
-                    )
-                    if attempt < max_retries - 1:
+            for attempt in range(max_retries):
+                if _is_embedding_cooling_down(self._model):
+                    cooldown_left = _embedding_cooldowns[self._model] - time.time()
+                    if cooldown_left > 0:
+                        wait = min(cooldown_left, 60)
+                        logger.info("Embedding in cooldown, waiting %.0fs...", wait)
                         await asyncio.sleep(wait)
-                        continue
-                raise AIServiceError(f"The AI provider returned an error: {exc}") from exc
-            except Exception as exc:
-                raise AIServiceError(f"The AI provider request failed: {exc}") from exc
 
-        raise AIServiceError("Embedding failed after all retries.")
+                try:
+                    result = await self._embed_batch(batch)
+                    all_embeddings.extend(result)
+                    logger.debug("Embedded batch %d/%d (%d texts)", batch_num, total_batches, len(batch))
+                    break
+                except APIError as exc:
+                    if _is_rate_limit_error(exc):
+                        retry_delay = _parse_retry_delay(exc)
+                        _set_embedding_cooldown(self._model, retry_delay)
+                        wait = retry_delay or min(2 ** attempt * 10, 60)
+                        logger.warning(
+                            "Embedding rate limited on batch %d/%d (attempt %d/%d). Waiting %.0fs...",
+                            batch_num, total_batches, attempt + 1, max_retries, wait,
+                        )
+                        if attempt < max_retries - 1:
+                            await asyncio.sleep(wait)
+                            continue
+                    raise AIServiceError(f"The AI provider returned an error: {exc}") from exc
+                except Exception as exc:
+                    raise AIServiceError(f"The AI provider request failed: {exc}") from exc
+            else:
+                raise AIServiceError(f"Embedding failed after {max_retries} retries on batch {batch_num}/{total_batches}.")
+
+            # Delay between batches to stay under rate limit
+            if batch_start + _EMBED_BATCH_SIZE < len(texts):
+                await asyncio.sleep(_EMBED_BATCH_DELAY)
+
+        return all_embeddings
 
 
 # Backward compatibility alias
