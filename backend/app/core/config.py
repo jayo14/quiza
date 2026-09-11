@@ -82,6 +82,9 @@ class Settings(BaseSettings):
 
     frontend_url: str = "http://localhost:5173"
 
+    # Celery / Redis
+    redis_url: str = "redis://localhost:6379/0"
+
 
     cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:3000,https://quiza-urmm.onrender.com"
 
