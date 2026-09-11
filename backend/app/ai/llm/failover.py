@@ -3,6 +3,7 @@ from typing import TypeVar
 from pydantic import BaseModel
 
 from app.ai.llm.base import LLMProvider
+from app.ai.llm.errors import classify_error, should_failover, ErrorCategory
 from app.ai.llm.gemini import GeminiLLMProvider
 from app.ai.llm.nvidia_nim import NvidiaNIMProvider
 from app.ai.llm.openai_provider import OpenAIProvider
@@ -81,12 +82,25 @@ class FailoverLLMProvider(LLMProvider):
                 return await provider.complete(system_prompt=system_prompt, user_prompt=user_prompt)
             except Exception as exc:
                 last_error = exc
+                category = classify_error(exc)
+                if not should_failover(exc):
+                    if category == ErrorCategory.AUTH_ERROR:
+                        logger.error("Provider '%s' auth failure: check your API key. Not failing over.", name)
+                        raise AIServiceError(f"Authentication failed for provider '{name}'. Check your API key.") from exc
+                    if category == ErrorCategory.INVALID_REQUEST:
+                        logger.error("Provider '%s' invalid request: %s", name, exc)
+                        raise AIServiceError(f"Invalid request to provider '{name}': {exc}") from exc
+                    if category == ErrorCategory.CONTEXT_LENGTH:
+                        logger.error("Provider '%s' context length exceeded: %s", name, exc)
+                        raise AIServiceError(f"Context length exceeded for provider '{name}': {exc}") from exc
+                    raise AIServiceError(f"Provider '{name}' failed with non-retryable error: {exc}") from exc
                 next_provider = active[i + 1] if i + 1 < len(active) else None
                 next_name = getattr(next_provider, "provider_name", "None") if next_provider else "none"
                 logger.warning(
-                    "Provider '%s' failed (%s). Failing over to next provider '%s'...",
+                    "Provider '%s' failed (%s, category=%s). Failing over to next provider '%s'...",
                     name,
                     exc,
+                    category.value,
                     next_name,
                 )
 
@@ -120,12 +134,25 @@ class FailoverLLMProvider(LLMProvider):
                 )
             except Exception as exc:
                 last_error = exc
+                category = classify_error(exc)
+                if not should_failover(exc):
+                    if category == ErrorCategory.AUTH_ERROR:
+                        logger.error("Provider '%s' auth failure: check your API key. Not failing over.", name)
+                        raise AIServiceError(f"Authentication failed for provider '{name}'. Check your API key.") from exc
+                    if category == ErrorCategory.INVALID_REQUEST:
+                        logger.error("Provider '%s' invalid request: %s", name, exc)
+                        raise AIServiceError(f"Invalid request to provider '{name}': {exc}") from exc
+                    if category == ErrorCategory.CONTEXT_LENGTH:
+                        logger.error("Provider '%s' context length exceeded: %s", name, exc)
+                        raise AIServiceError(f"Context length exceeded for provider '{name}': {exc}") from exc
+                    raise AIServiceError(f"Provider '{name}' failed with non-retryable error: {exc}") from exc
                 next_provider = active[i + 1] if i + 1 < len(active) else None
                 next_name = getattr(next_provider, "provider_name", "None") if next_provider else "none"
                 logger.warning(
-                    "Provider '%s' failed during structured generation (%s). Failing over to '%s'...",
+                    "Provider '%s' failed during structured generation (%s, category=%s). Failing over to '%s'...",
                     name,
                     exc,
+                    category.value,
                     next_name,
                 )
 

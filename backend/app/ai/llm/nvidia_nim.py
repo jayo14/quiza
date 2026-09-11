@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 import time
@@ -88,7 +89,15 @@ class NvidiaNIMProvider(LLMProvider):
 
         candidate_models = [m for m in self.models if not self._is_cooling_down(m)]
         if not candidate_models:
-            candidate_models = sorted(self.models, key=lambda m: self._cooldowns.get(m, 0.0))
+            sorted_models = sorted(self.models, key=lambda m: self._cooldowns.get(m, 0.0))
+            earliest_expiry = self._cooldowns.get(sorted_models[0], 0.0)
+            wait_time = max(0.0, earliest_expiry - time.time())
+            if wait_time < 120:
+                logger.info("All NVIDIA NIM models in cooldown. Waiting %.1fs for earliest expiry...", wait_time)
+                await asyncio.sleep(wait_time)
+                candidate_models = [m for m in self.models if not self._is_cooling_down(m)]
+            if not candidate_models:
+                candidate_models = sorted_models
 
         last_error: Exception | None = None
 
