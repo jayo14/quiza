@@ -23,7 +23,7 @@ class VectorStore(ABC):
     isolation guarantee lives here, not in the caller."""
 
     @abstractmethod
-    def add_many(self, records: list[EmbeddingRecord]) -> None:
+    def add_many(self, records: list[EmbeddingRecord], *, commit: bool = True) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -38,5 +38,5 @@ class VectorStore(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def delete_material(self, *, material_id: str, user_id: str) -> None:
+    def delete_material(self, *, material_id: str, user_id: str, commit: bool = True) -> None:
         raise NotImplementedError

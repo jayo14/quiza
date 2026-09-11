@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.ai.vectorstore.base import EmbeddingRecord, SearchResult, VectorStore
 
+EMBEDDING_DIMENSION = 768
+
 
 class PgVectorStore(VectorStore):
     """Postgres + pgvector backend for production scale. Requires the `pgvector`
@@ -25,8 +27,12 @@ class PgVectorStore(VectorStore):
             ) from exc
         self._db = db
 
-    def add_many(self, records: list[EmbeddingRecord]) -> None:
+    def add_many(self, records: list[EmbeddingRecord], *, commit: bool = True) -> None:
         for record in records:
+            if len(record.embedding) != EMBEDDING_DIMENSION:
+                raise ValueError(
+                    f"Embedding dimension mismatch: expected {EMBEDDING_DIMENSION}, got {len(record.embedding)}"
+                )
             self._db.execute(
                 text(
                     """
@@ -42,7 +48,8 @@ class PgVectorStore(VectorStore):
                     "embedding": record.embedding,
                 },
             )
-        self._db.commit()
+        if commit:
+            self._db.commit()
 
     def search(
         self,
@@ -52,8 +59,13 @@ class PgVectorStore(VectorStore):
         top_k: int = 5,
         material_id: str | None = None,
     ) -> list[SearchResult]:
+        if not query_embedding:
+            raise ValueError("query_embedding must not be empty")
+
+        if not all(isinstance(v, (int, float)) for v in query_embedding):
+            raise ValueError("query_embedding must contain only numeric values")
         material_filter = "AND material_id = :material_id" if material_id else ""
-        vector_str = f"[{','.join(str(f) for f in query_embedding)}]"
+        vector_str = "[" + ",".join(format(v, "g") for v in query_embedding) + "]"
         rows = self._db.execute(
             text(
                 f"""
@@ -73,11 +85,12 @@ class PgVectorStore(VectorStore):
         )
         return [SearchResult(chunk_id=row.chunk_id, score=row.score) for row in rows]
 
-    def delete_material(self, *, material_id: str, user_id: str) -> None:
+    def delete_material(self, *, material_id: str, user_id: str, commit: bool = True) -> None:
         self._db.execute(
             text(
                 "DELETE FROM chunk_embeddings_vector WHERE material_id = :material_id AND user_id = :user_id"
             ),
             {"material_id": material_id, "user_id": user_id},
         )
-        self._db.commit()
+        if commit:
+            self._db.commit()

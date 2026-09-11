@@ -14,7 +14,7 @@ class SQLiteVectorStore(VectorStore):
     def __init__(self, db: Session) -> None:
         self._db = db
 
-    def add_many(self, records: list[EmbeddingRecord]) -> None:
+    def add_many(self, records: list[EmbeddingRecord], *, commit: bool = True) -> None:
         for record in records:
             self._db.merge(
                 ChunkEmbedding(
@@ -24,7 +24,8 @@ class SQLiteVectorStore(VectorStore):
                     embedding=record.embedding,
                 )
             )
-        self._db.commit()
+        if commit:
+            self._db.commit()
 
     def search(
         self,
@@ -43,31 +44,28 @@ class SQLiteVectorStore(VectorStore):
             return []
 
         query_vec = np.array(query_embedding, dtype=np.float32)
-        query_norm = np.linalg.norm(query_vec) or 1e-9
 
         scored: list[SearchResult] = []
         for candidate in candidates:
             candidate_vec = np.array(candidate.embedding, dtype=np.float32)
             if query_vec.shape != candidate_vec.shape:
-                min_dim = min(len(query_vec), len(candidate_vec))
-                q_v = query_vec[:min_dim]
-                c_v = candidate_vec[:min_dim]
-            else:
-                q_v = query_vec
-                c_v = candidate_vec
+                raise ValueError(
+                    f"Embedding dimension mismatch: query={len(query_vec)}, candidate={len(candidate_vec)}"
+                )
 
-            q_norm = np.linalg.norm(q_v) or 1e-9
-            c_norm = np.linalg.norm(c_v) or 1e-9
-            similarity = float(np.dot(q_v, c_v) / (q_norm * c_norm))
+            q_norm = np.linalg.norm(query_vec) or 1e-9
+            c_norm = np.linalg.norm(candidate_vec) or 1e-9
+            similarity = float(np.dot(query_vec, candidate_vec) / (q_norm * c_norm))
             scored.append(SearchResult(chunk_id=candidate.chunk_id, score=similarity))
 
         scored.sort(key=lambda r: r.score, reverse=True)
         return scored[:top_k]
 
-    def delete_material(self, *, material_id: str, user_id: str) -> None:
+    def delete_material(self, *, material_id: str, user_id: str, commit: bool = True) -> None:
         self._db.execute(
             delete(ChunkEmbedding).where(
                 ChunkEmbedding.material_id == material_id, ChunkEmbedding.user_id == user_id
             )
         )
-        self._db.commit()
+        if commit:
+            self._db.commit()

@@ -1,5 +1,6 @@
 import logging
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.ai.embeddings.base import EmbeddingProvider
@@ -66,7 +67,8 @@ async def ingest_material(
                     embedding=embedding,
                 )
                 for row, embedding in zip(chunk_rows, embeddings, strict=True)
-            ]
+            ],
+            commit=False,
         )
 
         material.status = MaterialStatus.READY
@@ -78,7 +80,7 @@ async def ingest_material(
         db.rollback()
         logger.exception("Material ingestion failed for material_id=%s", material.id)
         material.status = MaterialStatus.FAILED
-        material.processing_error = str(exc)
+        material.processing_error = f"{type(exc).__name__}: {str(exc)[:500]}"
         db.add(material)
         db.commit()
 
@@ -89,17 +91,30 @@ async def run_ingestion_for_material(material_id: str) -> None:
 
     db = SessionLocal()
     try:
-        material = db.get(Material, material_id)
+        result = db.execute(select(Material).where(Material.id == material_id).with_for_update())
+        material = result.scalar_one_or_none()
         if material is None:
             logger.warning("run_ingestion_for_material: material %s not found", material_id)
+            return
+
+        if material.status == MaterialStatus.PROCESSING:
+            logger.info("run_ingestion_for_material: material %s already PROCESSING, skipping", material_id)
             return
 
         material.status = MaterialStatus.PROCESSING
         db.add(material)
         db.commit()
 
-        storage = get_storage_backend()
-        file_bytes = storage.read(material.storage_path)
+        try:
+            storage = get_storage_backend()
+            file_bytes = storage.read(material.storage_path)
+        except Exception as exc:
+            logger.exception("Failed to read storage for material %s", material_id)
+            material.status = MaterialStatus.FAILED
+            material.processing_error = f"Failed to read stored file: {exc}"
+            db.add(material)
+            db.commit()
+            return
 
         await ingest_material(db, material, file_bytes)
     finally:
