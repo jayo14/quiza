@@ -45,3 +45,10 @@ class AIServiceError(QuizaError):
 
     status_code = 502
     detail = "The AI service is temporarily unavailable."
+
+
+def safe_error_message(exc: Exception, max_length: int = 1000) -> str:
+    msg = str(exc)
+    if len(msg) > max_length:
+        return msg[:max_length - 3] + "..."
+    return msg

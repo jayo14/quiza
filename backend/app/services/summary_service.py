@@ -1,3 +1,4 @@
+from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from app.ai.summary_generator import generate_attempt_summary
@@ -17,13 +18,30 @@ async def get_or_generate_summary(db: Session, *, user: User, attempt_id: str) -
     if attempt.status != AttemptStatus.COMPLETED:
         raise ValidationFailedError("Submit this attempt before requesting a summary.")
 
-    content = await generate_attempt_summary(db, attempt=attempt)
+    raw_text, content = await generate_attempt_summary(db, attempt=attempt)
+
+    stmt = (
+        insert(Summary)
+        .values(
+            attempt_id=attempt.id,
+            user_id=user.id,
+            content=content.model_dump(mode="json"),
+            raw_ai_response=raw_text,
+        )
+        .on_conflict_do_nothing(index_elements=["attempt_id"])
+    )
+    db.execute(stmt)
+    db.commit()
+
+    existing = db.query(Summary).filter(Summary.attempt_id == attempt.id).first()
+    if existing:
+        return existing
 
     summary = Summary(
         attempt_id=attempt.id,
         user_id=user.id,
         content=content.model_dump(mode="json"),
-        raw_ai_response=content.model_dump(mode="json"),
+        raw_ai_response=raw_text,
     )
     db.add(summary)
     db.commit()

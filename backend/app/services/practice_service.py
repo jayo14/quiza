@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.ai.practice_generator import generate_practice_questions
-from app.core.exceptions import ValidationFailedError
+from app.core.exceptions import ValidationFailedError, safe_error_message
 from app.models.answer import Answer
 from app.models.attempt import QuizAttempt
 from app.models.enums import Difficulty, QuestionType, QuizStatus
@@ -129,7 +129,7 @@ async def generate_practice(
     except Exception as exc:
         db.rollback()
         quiz.status = QuizStatus.FAILED
-        quiz.generation_error = str(exc)
+        quiz.generation_error = safe_error_message(exc)
         db.add(quiz)
         db.commit()
         raise

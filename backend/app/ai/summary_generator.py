@@ -1,8 +1,10 @@
-from pydantic import BaseModel, Field
+import json
+
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.ai.llm.base import LLMProvider
+from app.ai.llm.base import LLMProvider, _strip_code_fences
 from app.ai.llm.openai import get_llm_provider
 from app.ai.prompts.summary import SUMMARY_SYSTEM_PROMPT, build_summary_user_prompt
 from app.models.attempt import QuizAttempt
@@ -63,9 +65,11 @@ def _format_previous_comparison(current: QuizAttempt, previous: list[QuizAttempt
 
 async def generate_attempt_summary(
     db: Session, *, attempt: QuizAttempt, llm: LLMProvider | None = None
-) -> SummaryContent:
+) -> tuple[str, SummaryContent]:
+    from app.core.exceptions import ValidationFailedError
+
     if attempt.status != AttemptStatus.COMPLETED:
-        raise ValueError("Cannot summarize an attempt that hasn't been submitted yet.")
+        raise ValidationFailedError("Cannot summarize an attempt that hasn't been submitted yet.")
 
     answer_results = attempt_service.build_answer_results(db, attempt)
     topic_performance = attempt_service.build_topic_performance(db, attempt)
@@ -88,19 +92,25 @@ async def generate_attempt_summary(
     )
 
     provider = llm or get_llm_provider()
-    return await provider.generate_structured(
-        system_prompt=SUMMARY_SYSTEM_PROMPT,
-        user_prompt=build_summary_user_prompt(
-            quiz_title=attempt.quiz.title,
-            score=attempt.score or 0,
-            accuracy=attempt.accuracy or 0,
-            total_questions=attempt.total_questions,
-            correct_count=attempt.correct_count,
-            incorrect_count=attempt.incorrect_count,
-            topic_performance=_format_topic_performance(topic_performance),
-            missed_questions=_format_missed_questions(answer_results),
-            known_weaknesses=_format_weaknesses(weaknesses),
-            previous_attempt_comparison=_format_previous_comparison(attempt, previous_attempts),
-        ),
-        response_model=SummaryContent,
+    schema_hint = json.dumps(SummaryContent.model_json_schema(), indent=2)
+    full_system_prompt = (
+        f"{SUMMARY_SYSTEM_PROMPT}\n\n"
+        "Respond with ONLY a single JSON object (no markdown fences, no prose) "
+        f"that matches this JSON schema:\n{schema_hint}"
     )
+    user_prompt = build_summary_user_prompt(
+        quiz_title=attempt.quiz.title,
+        score=attempt.score or 0,
+        accuracy=attempt.accuracy or 0,
+        total_questions=attempt.total_questions,
+        correct_count=attempt.correct_count,
+        incorrect_count=attempt.incorrect_count,
+        topic_performance=_format_topic_performance(topic_performance),
+        missed_questions=_format_missed_questions(answer_results),
+        known_weaknesses=_format_weaknesses(weaknesses),
+        previous_attempt_comparison=_format_previous_comparison(attempt, previous_attempts),
+    )
+    raw = await provider.complete(system_prompt=full_system_prompt, user_prompt=user_prompt)
+    cleaned = _strip_code_fences(raw)
+    data = json.loads(cleaned)
+    return raw, SummaryContent.model_validate(data)

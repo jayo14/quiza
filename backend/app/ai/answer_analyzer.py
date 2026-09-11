@@ -114,8 +114,10 @@ async def analyze_attempt_mistakes(attempt_id: str) -> None:
                     context=context.text,
                     previous_mistake_count=previous_mistake_count,
                 )
-            except AIServiceError:
+            except Exception:
                 logger.exception("Mistake analysis failed for answer_id=%s", answer.id)
+                answer.mistake_explanation = "Analysis failed due to an error."
+                db.add(answer)
                 continue
 
             answer.error_type = result.error_type
