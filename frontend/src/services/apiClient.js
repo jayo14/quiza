@@ -1,5 +1,28 @@
 import { API_BASE_URL } from "../config/api";
 
+const DEFAULT_TIMEOUT = 30000;
+
+async function fetchWithTimeout(url, options = {}, timeout = DEFAULT_TIMEOUT) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === "AbortError") {
+      throw new Error("Request timed out. Please try again.");
+    }
+    throw err;
+  }
+}
+
+function isValidId(id) {
+  return typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id);
+}
+
 const getAuthHeaders = () => {
   const token = localStorage.getItem("access_token");
   return {
@@ -33,11 +56,13 @@ async function handleResponse(response) {
 
 // --- Health ---
 export async function getHealth() {
-  const response = await fetch(`${API_BASE_URL}/ping`).catch(() => null);
-  if (!response) {
-    return { status: "online" };
+  try {
+    const response = await fetch(`${API_BASE_URL}/ping`);
+    if (!response.ok) return { status: "offline" };
+    return await response.json();
+  } catch {
+    return { status: "offline" };
   }
-  return handleResponse(response);
 }
 
 // --- Materials ---
@@ -104,20 +129,22 @@ export function uploadMaterial(file, title, onProgress) {
 }
 
 export async function listMaterials() {
-  const response = await fetch(`${API_BASE_URL}/materials`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/materials`, {
     headers: getAuthHeaders(),
   });
   return handleResponse(response);
 }
 
 export async function getMaterial(materialId) {
-  const response = await fetch(`${API_BASE_URL}/materials/${materialId}`, {
+  if (!isValidId(materialId)) throw new Error("Invalid material ID");
+  const response = await fetchWithTimeout(`${API_BASE_URL}/materials/${materialId}`, {
     headers: getAuthHeaders(),
   });
   return handleResponse(response);
 }
 
 export async function deleteMaterial(materialId) {
+  if (!isValidId(materialId)) throw new Error("Invalid material ID");
   const response = await fetch(`${API_BASE_URL}/materials/${materialId}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
@@ -133,7 +160,7 @@ export async function generateQuiz({
   difficulty = "medium",
   question_types = ["multiple_choice"],
 }) {
-  const response = await fetch(`${API_BASE_URL}/quizzes/generate`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/quizzes/generate`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({
@@ -154,7 +181,7 @@ export async function generateQuizBackground({
   difficulty = "medium",
   question_types = ["multiple_choice"],
 }) {
-  const response = await fetch(`${API_BASE_URL}/quizzes/generate-background`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/quizzes/generate-background`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({
@@ -169,20 +196,22 @@ export async function generateQuizBackground({
 }
 
 export async function listQuizzes() {
-  const response = await fetch(`${API_BASE_URL}/quizzes`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/quizzes`, {
     headers: getAuthHeaders(),
   });
   return handleResponse(response);
 }
 
 export async function getQuiz(quizId) {
-  const response = await fetch(`${API_BASE_URL}/quizzes/${quizId}`, {
+  if (!isValidId(quizId)) throw new Error("Invalid quiz ID");
+  const response = await fetchWithTimeout(`${API_BASE_URL}/quizzes/${quizId}`, {
     headers: getAuthHeaders(),
   });
   return handleResponse(response);
 }
 
 export async function deleteQuiz(quizId) {
+  if (!isValidId(quizId)) throw new Error("Invalid quiz ID");
   const response = await fetch(`${API_BASE_URL}/quizzes/${quizId}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
@@ -191,6 +220,7 @@ export async function deleteQuiz(quizId) {
 }
 
 export async function getQuizQuestions(quizId) {
+  if (!isValidId(quizId)) throw new Error("Invalid quiz ID");
   const response = await fetch(`${API_BASE_URL}/quizzes/${quizId}/questions`, {
     headers: getAuthHeaders(),
   });
@@ -198,7 +228,8 @@ export async function getQuizQuestions(quizId) {
 }
 
 export async function startAttempt(quizId) {
-  const response = await fetch(`${API_BASE_URL}/quizzes/${quizId}/attempts`, {
+  if (!isValidId(quizId)) throw new Error("Invalid quiz ID");
+  const response = await fetchWithTimeout(`${API_BASE_URL}/quizzes/${quizId}/attempts`, {
     method: "POST",
     headers: getAuthHeaders(),
   });
@@ -207,7 +238,8 @@ export async function startAttempt(quizId) {
 
 // --- Attempts ---
 export async function submitAttempt(attemptId, answers) {
-  const response = await fetch(`${API_BASE_URL}/attempts/${attemptId}/submit`, {
+  if (!isValidId(attemptId)) throw new Error("Invalid attempt ID");
+  const response = await fetchWithTimeout(`${API_BASE_URL}/attempts/${attemptId}/submit`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({ answers }),
@@ -216,14 +248,15 @@ export async function submitAttempt(attemptId, answers) {
 }
 
 export async function getAttempt(attemptId) {
-  const response = await fetch(`${API_BASE_URL}/attempts/${attemptId}`, {
+  if (!isValidId(attemptId)) throw new Error("Invalid attempt ID");
+  const response = await fetchWithTimeout(`${API_BASE_URL}/attempts/${attemptId}`, {
     headers: getAuthHeaders(),
   });
   return handleResponse(response);
 }
 
 export async function listAttempts() {
-  const response = await fetch(`${API_BASE_URL}/attempts`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/attempts`, {
     headers: getAuthHeaders(),
   });
   return handleResponse(response);
@@ -231,7 +264,8 @@ export async function listAttempts() {
 
 // --- Summaries ---
 export async function getAttemptSummary(attemptId) {
-  const response = await fetch(
+  if (!isValidId(attemptId)) throw new Error("Invalid attempt ID");
+  const response = await fetchWithTimeout(
     `${API_BASE_URL}/attempts/${attemptId}/summary`,
     {
       headers: getAuthHeaders(),
@@ -242,14 +276,14 @@ export async function getAttemptSummary(attemptId) {
 
 // --- Analytics ---
 export async function listWeaknesses() {
-  const response = await fetch(`${API_BASE_URL}/analytics/weaknesses`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/analytics/weaknesses`, {
     headers: getAuthHeaders(),
   });
   return handleResponse(response);
 }
 
 export async function listTopicMastery() {
-  const response = await fetch(`${API_BASE_URL}/analytics/topics`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/analytics/topics`, {
     headers: getAuthHeaders(),
   });
   return handleResponse(response);
@@ -262,7 +296,7 @@ export async function generatePractice({
   question_types = ["multiple_choice"],
   topics = [],
 }) {
-  const response = await fetch(`${API_BASE_URL}/practice/generate`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/practice/generate`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify({

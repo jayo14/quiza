@@ -21,14 +21,42 @@ import { Toaster } from "sonner";
 import ServerWarmupBanner from "./components/ServerWarmupBanner";
 
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 import "./App.css";
+
+function NotFound() {
+  return (
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: "60vh",
+      textAlign: "center",
+    }}>
+      <h1 style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>404</h1>
+      <p style={{ color: "var(--text-secondary)" }}>Page not found</p>
+      <a href="/" style={{ color: "var(--primary)", marginTop: "1rem" }}>Go Home</a>
+    </div>
+  );
+}
 
 function ProtectedRoute() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="app-loading">Loading...</div>;
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
+        <div style={{
+          width: 32, height: 32,
+          border: "3px solid var(--border-color)",
+          borderTopColor: "var(--primary)",
+          borderRadius: "50%",
+          animation: "spin 0.8s linear infinite",
+        }} />
+      </div>
+    );
   }
 
   if (!user) {
@@ -60,25 +88,29 @@ function App() {
       <Toaster position="top-center" />
       <ServerWarmupBanner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/signin" element={<SignIn />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/signin" element={<SignIn />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route element={<DashboardLayout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/upload" element={<UploadMaterial />} />
-              <Route path="/quizzes" element={<MyQuizzes />} />
-              <Route path="/quiz" element={<Quiz />} />
-              <Route path="/summary" element={<Summary />} />
-              <Route path="/progress" element={<Progress />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/review" element={<ReviewAnswers />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<DashboardLayout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/upload" element={<UploadMaterial />} />
+                <Route path="/quizzes" element={<MyQuizzes />} />
+                <Route path="/quiz" element={<Quiz />} />
+                <Route path="/summary" element={<Summary />} />
+                <Route path="/progress" element={<Progress />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/review" element={<ReviewAnswers />} />
+              </Route>
             </Route>
-          </Route>
-        </Routes>
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ErrorBoundary>
       </BrowserRouter>
     </AuthProvider>
   );
