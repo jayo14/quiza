@@ -3,9 +3,12 @@ from enum import StrEnum
 
 class MaterialStatus(StrEnum):
     UPLOADED = "uploaded"
+    QUEUED = "queued"
     PROCESSING = "processing"
+    RETRYING = "retrying"
     READY = "ready"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class QuestionType(StrEnum):
@@ -21,9 +24,12 @@ class Difficulty(StrEnum):
 
 
 class QuizStatus(StrEnum):
+    QUEUED = "queued"
     GENERATING = "generating"
+    RETRYING = "retrying"
     READY = "ready"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class AttemptStatus(StrEnum):
