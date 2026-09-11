@@ -60,7 +60,13 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
 
     @property
     def dimensions(self) -> int:
-        return _GEMINI_EMBEDDING_DIMENSIONS.get(self._model, 3072)
+        dims = _GEMINI_EMBEDDING_DIMENSIONS.get(self._model)
+        if dims is None:
+            raise ValueError(
+                f"Unknown embedding model '{self._model}'. "
+                f"Known models: {', '.join(_GEMINI_EMBEDDING_DIMENSIONS.keys())}"
+            )
+        return dims
 
     async def _embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Embed a single batch of texts concurrently (up to 5 at a time)."""
@@ -79,7 +85,12 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
                     values = response.embeddings[0].values
 
                 if values:
-                    return list(values)
+                    result = list(values)
+                    if len(result) != self.dimensions:
+                        raise AIServiceError(
+                            f"Embedding dimension mismatch: expected {self.dimensions}, got {len(result)}"
+                        )
+                    return result
                 raise AIServiceError("The AI provider returned empty embeddings.")
 
         return await asyncio.gather(*[_embed_one(text) for text in texts])
@@ -132,10 +143,6 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
                 await asyncio.sleep(_EMBED_BATCH_DELAY)
 
         return all_embeddings
-
-
-# Backward compatibility alias
-OpenAIEmbeddingProvider = GeminiEmbeddingProvider
 
 
 def get_embedding_provider() -> EmbeddingProvider:

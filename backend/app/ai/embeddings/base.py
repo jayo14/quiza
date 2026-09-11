@@ -16,5 +16,11 @@ class EmbeddingProvider(ABC):
         """Embed a batch of texts, returning one vector per input in the same order."""
         raise NotImplementedError
 
+    def validate_dimensions(self, embedding: list[float]) -> None:
+        if len(embedding) != self.dimensions:
+            raise ValueError(
+                f"Embedding dimension mismatch: expected {self.dimensions}, got {len(embedding)}"
+            )
+
     async def embed_one(self, text: str) -> list[float]:
         return (await self.embed([text]))[0]
