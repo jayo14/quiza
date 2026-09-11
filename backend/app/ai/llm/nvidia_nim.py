@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from openai import AsyncOpenAI
 
@@ -7,6 +8,18 @@ from app.core.config import settings
 from app.core.exceptions import AIServiceError
 
 logger = logging.getLogger(__name__)
+
+
+def parse_retry_delay(exc: Exception) -> float | None:
+    """Extract retry-after or retry delay from error responses."""
+    msg = str(exc)
+    match = re.search(r"retry[_-]?after['\"]?\s*[:=]\s*['\"]?(\d+)", msg, re.IGNORECASE)
+    if match:
+        return float(match.group(1))
+    match = re.search(r"please try again in (\d+\.?\d*)s", msg, re.IGNORECASE)
+    if match:
+        return float(match.group(1))
+    return None
 
 
 class NvidiaNIMProvider(LLMProvider):
@@ -46,12 +59,13 @@ class NvidiaNIMProvider(LLMProvider):
         expires = self._cooldowns.get(model, 0.0)
         return time.time() < expires
 
-    def _set_cooldown(self, model: str, duration: float = 60.0) -> None:
-        self._cooldowns[model] = time.time() + duration
+    def _set_cooldown(self, model: str, duration: float | None = None) -> None:
+        cooldown = duration or float(settings.llm_model_cooldown_seconds)
+        self._cooldowns[model] = time.time() + cooldown
         logger.warning(
             "NVIDIA NIM model '%s' placed in cooldown for %ds due to overload/exhaustion.",
             model,
-            int(duration),
+            int(cooldown),
         )
 
     def _is_transient_or_demand_error(self, exc: Exception) -> bool:
@@ -113,11 +127,13 @@ class NvidiaNIMProvider(LLMProvider):
             except Exception as exc:
                 last_error = exc
                 if self._is_transient_or_demand_error(exc):
-                    self._set_cooldown(model, float(settings.llm_model_cooldown_seconds))
+                    retry_delay = parse_retry_delay(exc)
+                    self._set_cooldown(model, retry_delay)
                     logger.warning(
-                        "NVIDIA NIM model %s failed with transient error (%s). Falling over to next model...",
+                        "NVIDIA NIM model %s failed with transient error (%s). Cooldown %ds. Falling over...",
                         model,
                         exc,
+                        int(retry_delay or settings.llm_model_cooldown_seconds),
                     )
                 else:
                     logger.warning(
