@@ -39,8 +39,8 @@ async def generate_quiz(
             f"Study material is still processing: {', '.join(unready)}. Please wait for ingestion to finish."
         )
 
-    # Dynamic rules: Single material -> 5 questions; Multiple materials -> capped at 10 questions.
-    effective_count = min(10, number_of_questions) if len(materials) > 1 else min(5, number_of_questions)
+    # Use the user's requested count directly (validated 1-50 by schema).
+    effective_count = number_of_questions
     primary_material = materials[0]
     title = f"Quiz: {primary_material.title}" if len(materials) == 1 else f"Multi-Material Quiz ({len(materials)} sources)"
 
