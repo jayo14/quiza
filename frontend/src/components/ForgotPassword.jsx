@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Mail, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import { API_BASE_URL } from "../config/api";
 import "./ForgotPassword.css";
 
@@ -32,10 +33,11 @@ function ForgotPassword() {
         throw new Error(data.detail?.[0]?.msg || "Failed to send reset link");
       }
       console.log("Forgot password response:", data);
+      toast.success("Reset link sent! Check your inbox.");
       setSubmitted(true);
     } catch (error) {
       console.error("Forgot password error:", error);
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
