@@ -45,7 +45,7 @@ async def generate_practice_questions(
     provider = llm or get_llm_provider()
     ctx_mgr = GenerationContextManager(target_count=number_of_questions)
 
-    max_rounds = 3
+    max_rounds = max(3, (number_of_questions + 4) // 5)
     for _ in range(max_rounds):
         if ctx_mgr.is_complete:
             break

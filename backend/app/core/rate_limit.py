@@ -2,7 +2,7 @@ import time
 from collections import defaultdict
 from threading import Lock
 
-from fastapi import Depends
+from fastapi import Depends, Request
 
 from app.core.config import settings
 from app.core.dependencies import get_current_user
@@ -34,7 +34,13 @@ class InMemoryRateLimiter:
 
 
 ai_rate_limiter = InMemoryRateLimiter(settings.ai_rate_limit_per_minute)
+_auth_limiter = InMemoryRateLimiter(limit_per_minute=10)
 
 
 def enforce_ai_rate_limit(current_user: User = Depends(get_current_user)) -> None:
     ai_rate_limiter.check(current_user.id)
+
+
+def enforce_auth_rate_limit(request: Request) -> None:
+    client_ip = request.client.host if request.client else "unknown"
+    _auth_limiter.check(client_ip)

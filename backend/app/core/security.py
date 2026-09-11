@@ -20,8 +20,15 @@ _BCRYPT_MAX_BYTES = 72
 
 
 def hash_password(password: str) -> str:
-    password_bytes = password.encode("utf-8")[:_BCRYPT_MAX_BYTES]
-    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
+    password_bytes = password.encode("utf-8")
+    if len(password_bytes) > 128:
+        raise ValueError("Password exceeds maximum allowed length of 128 bytes.")
+    if len(password_bytes) > _BCRYPT_MAX_BYTES:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Password exceeds 72 bytes; only the first 72 bytes will be hashed by bcrypt."
+        )
+    return bcrypt.hashpw(password_bytes[:_BCRYPT_MAX_BYTES], bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, password_hash: str | None) -> bool:
@@ -38,9 +45,9 @@ def _create_token(subject: str, token_type: TokenType, expires_delta: timedelta)
         "type": token_type.value,
         "iat": now,
         "exp": now + expires_delta,
-        "jti": uuid4().hex,
+        "jti": uuid4().hex,  # TODO: implement token revocation via a denylist keyed on jti
     }
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return jwt.encode(payload, settings.effective_jwt_secret, algorithm=settings.jwt_algorithm)
 
 
 def create_access_token(user_id: str) -> str:
@@ -69,7 +76,7 @@ class InvalidTokenError(Exception):
 
 def decode_token(token: str, expected_type: TokenType) -> str:
     try:
-        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(token, settings.effective_jwt_secret, algorithms=[settings.jwt_algorithm])
     except JWTError as exc:
         raise InvalidTokenError("Token is invalid or expired") from exc
 

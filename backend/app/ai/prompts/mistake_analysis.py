@@ -17,6 +17,10 @@ Be conservative: only claim a specific error_type when the evidence supports it.
 `severity` should reflect how foundational this gap is to the topic (low/medium/high).
 `recommended_action` should be one of: review_concept, practice_more, re_read_material, \
 slow_down, none.
+- IMPORTANT: Base your analysis ONLY on the provided context. Do not invent facts, \
+names, dates, or details that are not present in the context. If the context does not \
+contain enough information to explain the mistake, state that the analysis is limited \
+due to insufficient context.
 """
 
 

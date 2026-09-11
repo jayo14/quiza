@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Quiza"
     app_env: str = "development"
-    debug: bool = True
+    debug: bool = False
     api_v1_prefix: str = "/api/v1"
 
     database_url: str = "sqlite:///./quiza.db"
@@ -46,10 +46,20 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 25
 
     supabase_url: str | None = None
-    supbase_url: str | None = None
+    supbase_url: str | None = None  # Legacy typo fallback; use supabase_url instead
     supabase_key: str | None = None
     supabase_anon_key: str | None = None
     supabase_storage_bucket: str = "materials"
+
+    @property
+    def effective_jwt_secret(self) -> str:
+        if self.is_production and self.jwt_secret_key == "change-me-dev-only-secret":
+            import logging
+            logging.getLogger(__name__).critical(
+                "JWT_SECRET_KEY is set to the default dev value in production! "
+                "Set JWT_SECRET_KEY to a strong random string."
+            )
+        return self.jwt_secret_key
 
     @property
     def effective_supabase_url(self) -> str | None:
@@ -100,11 +110,15 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    import logging
+    _logger = logging.getLogger(__name__)
     settings = Settings()
     if settings.is_production and settings.jwt_secret_key == "change-me-dev-only-secret":
         raise RuntimeError(
             "JWT_SECRET_KEY must be overridden with a real secret in production."
         )
+    if not settings.gemini_api_key and not settings.openai_api_key and not settings.nvidia_api_key:
+        _logger.warning("No LLM API keys configured (gemini, openai, nvidia). AI features will fail.")
     return settings
 
 

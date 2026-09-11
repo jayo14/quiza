@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, Depends, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.dependencies import get_current_user, get_db
+from app.core.rate_limit import enforce_auth_rate_limit
 from app.models.user import User
 from app.schemas.auth import (
     AuthResponse,
@@ -20,12 +21,14 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/signup", response_model=AuthResponse, status_code=201)
-def signup(payload: SignUpRequest, db: Session = Depends(get_db)) -> AuthResponse:
+def signup(payload: SignUpRequest, request: Request, db: Session = Depends(get_db)) -> AuthResponse:
+    enforce_auth_rate_limit(request)
     return auth_service.sign_up(db, payload)
 
 
 @router.post("/signin", response_model=AuthResponse)
-def signin(payload: SignInRequest, db: Session = Depends(get_db)) -> AuthResponse:
+def signin(payload: SignInRequest, request: Request, db: Session = Depends(get_db)) -> AuthResponse:
+    enforce_auth_rate_limit(request)
     return auth_service.sign_in(db, payload)
 
 

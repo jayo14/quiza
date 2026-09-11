@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ConflictError, UnauthorizedError
+from app.core.exceptions import ConflictError, UnauthorizedError, ValidationFailedError
 from app.core.security import (
     TokenType,
     create_access_token,
@@ -31,6 +31,8 @@ def get_user_by_id(db: Session, user_id: str) -> User | None:
 
 
 def sign_up(db: Session, payload: SignUpRequest) -> AuthResponse:
+    if len(payload.password) < 8:
+        raise ValidationFailedError("Password must be at least 8 characters long.")
     if get_user_by_email(db, payload.email):
         raise ConflictError("An account with this email already exists.")
 

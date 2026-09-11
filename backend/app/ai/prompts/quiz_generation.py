@@ -16,6 +16,10 @@ a short, unambiguous phrase.
 - `topic` should be a short (2-5 word) label for the concept being tested, consistent across \
 questions that test the same concept so related questions can be grouped later.
 - Do not generate near-duplicate questions.
+- IMPORTANT: Base your questions ONLY on the provided context. If the context does not \
+contain enough information to create a question on a topic, skip that topic entirely. \
+Do not invent facts, names, dates, or details that are not present in the context. \
+Every question must be answerable from the provided context alone.
 """
 
 
