@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import "./SignIn.css";
 
@@ -23,7 +24,7 @@ function SignIn() {
       navigate("/");
     } catch (error) {
       console.error("Signin error:", error);
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }

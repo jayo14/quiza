@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import "./SignUp.css";
 
@@ -39,7 +40,7 @@ function SignUp() {
       navigate("/");
     } catch (error) {
       console.error("Signup error:", error);
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
