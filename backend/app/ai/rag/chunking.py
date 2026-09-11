@@ -31,6 +31,9 @@ def chunk_pages(
     """Clean and split parsed pages into overlapping character-based chunks, keeping
     each chunk tagged with the page (and best-effort section heading) it came from."""
 
+    if chunk_overlap >= chunk_size:
+        chunk_overlap = chunk_size // 4
+
     chunks: list[Chunk] = []
     index = 0
 
@@ -43,7 +46,10 @@ def chunk_pages(
         start = 0
         while start < len(text):
             end = min(start + chunk_size, len(text))
-            piece = text[start:end].strip()
+            piece = text[start:end]
+            if end < len(text):
+                piece = _refine_split(piece)
+            piece = piece.strip()
             if piece:
                 chunks.append(
                     Chunk(chunk_index=index, content=piece, page_number=page.page_number, section=section)
@@ -51,9 +57,22 @@ def chunk_pages(
                 index += 1
             if end == len(text):
                 break
-            start = end - chunk_overlap
+            refined_len = len(piece)
+            start = start + refined_len - chunk_overlap
 
     return chunks
+
+
+def _refine_split(text: str) -> str:
+    tail_200 = text[-200:]
+    para_pos = tail_200.rfind("\n\n")
+    if para_pos >= 0:
+        return text[: -200 + para_pos]
+    tail_100 = text[-100:]
+    sent_pos = tail_100.rfind(". ")
+    if sent_pos >= 0:
+        return text[: -100 + sent_pos + 1]
+    return text
 
 
 def _guess_section(text: str) -> str | None:

@@ -90,12 +90,14 @@ async def generate_quiz_questions(
     difficulty: Difficulty,
     question_types: list[QuestionType],
     llm: LLMProvider | None = None,
+    material_ids: list[str] | None = None,
 ) -> list[GeneratedQuestion]:
     context = await get_context_for_query(
         db,
         user_id=user_id,
         query=f"key concepts, facts, and definitions suitable for {difficulty.value} quiz questions",
         material_id=material_id,
+        material_ids=material_ids,
         top_k=max(number_of_questions, 8),
     )
     if not context.text:

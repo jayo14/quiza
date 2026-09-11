@@ -30,9 +30,11 @@ class PdfParser(DocumentParser):
         except Exception as exc:
             raise ValidationFailedError(f"Could not read PDF file: {exc}") from exc
 
-        pages = [ParsedPage(page_number=i + 1, text=page.get_text()) for i, page in enumerate(doc)]
-        doc.close()
-        return pages
+        try:
+            pages = [ParsedPage(page_number=i + 1, text=page.get_text()) for i, page in enumerate(doc)]
+            return pages
+        finally:
+            doc.close()
 
 
 class DocxParser(DocumentParser):
