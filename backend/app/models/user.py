@@ -11,6 +11,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    profile_image: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     materials: Mapped[list["Material"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
