@@ -36,6 +36,15 @@ async def upload_material(
         content=content,
         title=title,
     )
+
+    # Trigger ingestion immediately via Celery
+    try:
+        from app.tasks import ingest_material_task
+        ingest_material_task.delay(material.id)
+    except Exception:
+        # If Celery/Redis unavailable, ingestion will happen on quiz generation
+        pass
+
     return material
 
 
