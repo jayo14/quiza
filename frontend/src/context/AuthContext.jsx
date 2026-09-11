@@ -97,6 +97,24 @@ export function AuthProvider({ children }) {
     checkAuth();
   }, [signOut]);
 
+  const refreshUser = useCallback(async () => {
+    const storedToken = localStorage.getItem("access_token");
+    if (!storedToken) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${storedToken}` },
+      });
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+        localStorage.setItem("user", JSON.stringify(userData));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const signInWithGoogle = async () => {
     const { supabase } = await import("../config/supabase");
     await supabase.auth.signInWithOAuth({
@@ -162,6 +180,7 @@ export function AuthProvider({ children }) {
     signInWithGoogle,
     signUp,
     signOut,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

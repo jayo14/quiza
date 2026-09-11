@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import "./Settings.css";
 
 function Settings() {
-  const { user, token } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const [profile, setProfile] = useState(user);
   const [loading, setLoading] = useState(!user);
   const [saving, setSaving] = useState(false);
@@ -69,6 +69,7 @@ function Settings() {
 
       setProfile(data);
       localStorage.setItem("user", JSON.stringify(data));
+      refreshUser();
       toast.success("Profile updated successfully!");
     } catch (error) {
       toast.error(error.message);
@@ -115,6 +116,7 @@ function Settings() {
 
       setProfile(data);
       localStorage.setItem("user", JSON.stringify(data));
+      refreshUser();
       toast.success("Profile image updated!");
     } catch (error) {
       toast.error(error.message);
