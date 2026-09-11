@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, X, Sparkles, CheckCircle, Loader2, RotateCcw, AlertCircle } from "lucide-react";
+import { Upload, X, Sparkles, CheckCircle, Loader2, RotateCcw, AlertCircle, Hash } from "lucide-react";
 import { uploadMaterial, generateQuiz, deleteMaterial, getMaterial } from "../services/apiClient";
 import "./UploadMaterial.css";
 
@@ -10,6 +10,7 @@ function UploadMaterial() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGenerated, setIsGenerated] = useState(false);
   const [generatedQuizId, setGeneratedQuizId] = useState(null);
+  const [numQuestions, setNumQuestions] = useState(10);
   const navigate = useNavigate();
 
   // Track active pollers so they can be cancelled when files are removed or retried
@@ -283,12 +284,10 @@ function UploadMaterial() {
         .map((f) => f.materialId)
         .filter(Boolean);
 
-      const targetCount = readyMaterialIds.length > 1 ? 10 : 5;
-
       const quiz = await generateQuiz({
         material_id: readyMaterialIds[0],
         material_ids: readyMaterialIds,
-        number_of_questions: targetCount,
+        number_of_questions: numQuestions,
         difficulty: "medium",
         question_types: ["multiple_choice"],
       });
@@ -434,6 +433,26 @@ function UploadMaterial() {
                   )}
                 </div>
               ))}
+
+              {allReady && (
+                <div className="upload-material__settings">
+                  <div className="upload-material__field">
+                    <label htmlFor="num-questions">
+                      <Hash size={14} />
+                      Number of Questions
+                    </label>
+                    <select
+                      id="num-questions"
+                      value={numQuestions}
+                      onChange={(e) => setNumQuestions(Number(e.target.value))}
+                    >
+                      {[5, 10, 15, 20, 25, 30, 40, 50].map((n) => (
+                        <option key={n} value={n}>{n} questions</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
 
               <button
                 type="button"

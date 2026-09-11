@@ -468,6 +468,50 @@
   }
 }
 
+/* Quiz Settings */
+
+.upload-material__settings {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--bg-secondary, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.upload-material__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.upload-material__field label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.upload-material__field select {
+  height: 38px;
+  padding: 0 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.upload-material__field select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
 /* Mobile */
 
 @media (max-width: 600px) {
