@@ -62,17 +62,13 @@ class Settings(BaseSettings):
     vector_store_backend: str = "pgvector"
 
     ai_rate_limit_per_minute: int = 10
-    # SMTP Settings (legacy, kept for fallback)
+    # SMTP Settings
     smtp_server: str = "smtp.gmail.com"
     smtp_port: int = 587
     smtp_username: str | None = None
     smtp_password: str | None = None
     smtp_from_email: str | None = None
     smtp_from_name: str = "Quiza"
-
-    # Resend API (primary email sender — HTTPS, never blocked by hosting platforms)
-    resend_api_key: str | None = None
-    resend_from_email: str = "Quiza Support <onboarding@resend.dev>"
 
     frontend_url: str = "http://localhost:5173"
 
