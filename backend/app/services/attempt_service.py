@@ -21,7 +21,7 @@ def _now() -> datetime:
 
 def start_attempt(db: Session, *, user: User, quiz_id: str) -> QuizAttempt:
     quiz = quiz_service.get_owned_quiz(db, user=user, quiz_id=quiz_id)
-    if quiz.status != QuizStatus.READY:
+    if quiz.status not in (QuizStatus.READY,):
         raise ValidationFailedError("This quiz isn't ready to be attempted yet.")
 
     existing = db.execute(
