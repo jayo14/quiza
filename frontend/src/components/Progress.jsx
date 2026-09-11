@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { Sparkles, AlertTriangle, CheckCircle2, Target } from "lucide-react";
 import {
   listWeaknesses,
@@ -55,7 +56,7 @@ function Progress() {
 
   const handleGeneratePractice = async (topicName) => {
     if (materials.length === 0) {
-      alert("Please upload study material first before generating practice quizzes.");
+      toast.warning("Please upload study material first before generating practice quizzes.");
       navigate("/upload");
       return;
     }
@@ -69,7 +70,7 @@ function Progress() {
       });
       navigate(`/quiz?id=${practiceQuiz.id}`);
     } catch (err) {
-      alert(err.message || "Failed to generate targeted practice quiz");
+      toast.error(err.message || "Failed to generate targeted practice quiz");
     } finally {
       setGenerating(false);
     }

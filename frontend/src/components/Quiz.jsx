@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import {
   getQuizQuestions,
   getQuiz,
@@ -99,7 +100,7 @@ function Quiz() {
         });
       } catch (err) {
         console.error("Failed to submit attempt:", err);
-        alert(err.message || "Failed to submit attempt");
+        toast.error(err.message || "Failed to submit attempt");
       } finally {
         setSubmitting(false);
       }
