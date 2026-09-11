@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from google import genai
 from google.genai import types
@@ -8,6 +9,15 @@ from app.core.config import settings
 from app.core.exceptions import AIServiceError
 
 logger = logging.getLogger(__name__)
+
+
+def parse_retry_delay(exc: Exception) -> float | None:
+    """Extract retryDelay from Gemini API error responses (e.g. '30s', '60s')."""
+    msg = str(exc)
+    match = re.search(r"retryDelay['\"]?\s*[:=]\s*['\"]?(\d+)s", msg)
+    if match:
+        return float(match.group(1))
+    return None
 
 
 class GeminiLLMProvider(LLMProvider):
@@ -36,12 +46,13 @@ class GeminiLLMProvider(LLMProvider):
         expires = self._cooldowns.get(model, 0.0)
         return time.time() < expires
 
-    def _set_cooldown(self, model: str, duration: float = 60.0) -> None:
-        self._cooldowns[model] = time.time() + duration
+    def _set_cooldown(self, model: str, duration: float | None = None) -> None:
+        cooldown = duration or float(settings.llm_model_cooldown_seconds)
+        self._cooldowns[model] = time.time() + cooldown
         logger.warning(
             "Gemini model '%s' placed in cooldown for %ds due to overload/exhaustion.",
             model,
-            int(duration),
+            int(cooldown),
         )
 
     def _is_transient_or_demand_error(self, exc: Exception) -> bool:
@@ -91,11 +102,13 @@ class GeminiLLMProvider(LLMProvider):
             except Exception as exc:
                 last_error = exc
                 if self._is_transient_or_demand_error(exc):
-                    self._set_cooldown(model, float(settings.llm_model_cooldown_seconds))
+                    retry_delay = parse_retry_delay(exc)
+                    self._set_cooldown(model, retry_delay)
                     logger.warning(
-                        "Gemini model %s failed with transient/demand error (%s). Falling over to next model...",
+                        "Gemini model %s failed with transient/demand error (%s). Cooldown %ds. Falling over...",
                         model,
                         exc,
+                        int(retry_delay or settings.llm_model_cooldown_seconds),
                     )
                 else:
                     logger.warning(
