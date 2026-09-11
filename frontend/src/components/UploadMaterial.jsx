@@ -6,6 +6,7 @@ import {
   uploadMaterial,
   generateQuizBackground,
   deleteMaterial,
+  deleteQuiz,
   getMaterial,
   getQuiz,
   listMaterials,
@@ -49,6 +50,7 @@ function UploadMaterial() {
   const [genError, setGenError] = useState(null);
   const [materialStates, setMaterialStates] = useState({});
   const [restoring, setRestoring] = useState(true);
+  const [recentQuizzes, setRecentQuizzes] = useState([]);
 
   // ── Cleanup ─────────────────────────────────────────────────
 
@@ -75,6 +77,9 @@ function UploadMaterial() {
   // ── Material ingestion polling ──────────────────────────────
 
   const pollMaterialIngestion = useCallback((materialId) => {
+    // Don't start a new poller if one already exists for this material
+    if (pollersRef.current[`mat-${materialId}`]) return;
+
     let attempts = 0;
     const check = async () => {
       attempts++;
@@ -83,12 +88,12 @@ function UploadMaterial() {
         setMaterialStates((prev) => ({ ...prev, [materialId]: mat.status }));
 
         if (mat.status === "ready") {
-          // Update file list status
           setFileList((prev) =>
             prev.map((f) =>
               f.materialId === materialId ? { ...f, status: "uploaded", error: null } : f
             )
           );
+          cancelPoll(`mat-${materialId}`);
           return;
         }
         if (mat.status === "failed") {
@@ -99,14 +104,18 @@ function UploadMaterial() {
                 : f
             )
           );
+          cancelPoll(`mat-${materialId}`);
           toast.error(`${mat.filename} processing failed: ${mat.processing_error || "Unknown error"}`);
           return;
         }
         if (attempts < MAX_POLL_ATTEMPTS) {
           schedulePoll(`mat-${materialId}`, check);
+        } else {
+          cancelPoll(`mat-${materialId}`);
         }
       } catch {
         if (attempts < MAX_POLL_ATTEMPTS) schedulePoll(`mat-${materialId}`, check, 3000);
+        else cancelPoll(`mat-${materialId}`);
       }
     };
     schedulePoll(`mat-${materialId}`, check);
@@ -161,14 +170,24 @@ function UploadMaterial() {
         const [materials, quizzes] = await Promise.all([listMaterials(), listQuizzes()]);
         if (cancelled) return;
 
-        // Build file list from materials
-        const items = materials.map(materialToFormItem);
+        // Deduplicate materials by id (API can return dupes across requests)
+        const seen = new Set();
+        const unique = materials.filter((m) => {
+          if (seen.has(m.id)) return false;
+          seen.add(m.id);
+          return true;
+        });
+
+        // Build file list from unique materials
+        const items = unique.map(materialToFormItem);
         setFileList(items);
 
-        // Build material status map
+        // Build material status map — only for non-terminal states
         const matMap = {};
-        materials.forEach((m) => {
-          matMap[m.id] = m.status;
+        unique.forEach((m) => {
+          if (m.status === "processing" || m.status === "uploaded" || m.status === "queued") {
+            matMap[m.id] = m.status;
+          }
         });
         setMaterialStates(matMap);
 
@@ -176,38 +195,43 @@ function UploadMaterial() {
         const generatingQuizzes = quizzes.filter((q) => q.status === "generating");
         const readyQuizzes = quizzes.filter((q) => q.status === "ready");
         const failedQuizzes = quizzes.filter((q) => q.status === "failed");
-        const processingMats = materials.filter(
-          (m) => m.status === "processing" || m.status === "uploaded"
-        );
 
         if (generatingQuizzes.length > 0) {
-          // Most recent generating quiz
           const quiz = generatingQuizzes[0];
           setGenQuizId(quiz.id);
           setNumQuestions(quiz.number_of_questions);
           setGenPhase("generating");
           pollQuizStatus(quiz.id);
 
-          // Also poll materials that are still processing
-          materials
-            .filter((m) => m.status === "processing")
+          // Only poll materials that are NOT already ready
+          unique
+            .filter((m) => m.status !== "ready" && m.status !== "failed")
             .forEach((m) => pollMaterialIngestion(m.id));
-        } else if (processingMats.length > 0) {
-          // Materials still ingesting, no quiz yet
-          setGenPhase("ingesting");
-          processingMats.forEach((m) => pollMaterialIngestion(m.id));
-        } else if (failedQuizzes.length > 0) {
-          const quiz = failedQuizzes[0];
-          setGenQuizId(quiz.id);
-          setNumQuestions(quiz.number_of_questions);
-          setGenPhase("failed");
-          setGenError(quiz.generation_error || "Previous quiz generation failed.");
-        } else if (readyQuizzes.length > 0) {
-          const quiz = readyQuizzes[0];
-          setGenQuizId(quiz.id);
-          setNumQuestions(quiz.number_of_questions);
+        } else {
+          // Not generating — poll only truly in-progress materials, skip ready ones
+          const inProgress = unique.filter(
+            (m) => m.status === "processing" || m.status === "uploaded" || m.status === "queued"
+          );
+          if (inProgress.length > 0) {
+            setGenPhase("ingesting");
+            inProgress.forEach((m) => pollMaterialIngestion(m.id));
+          } else if (failedQuizzes.length > 0) {
+            const quiz = failedQuizzes[0];
+            setGenQuizId(quiz.id);
+            setNumQuestions(quiz.number_of_questions);
+            setGenPhase("failed");
+            setGenError(quiz.generation_error || "Previous quiz generation failed.");
+          } else if (readyQuizzes.length > 0) {
+            const quiz = readyQuizzes[0];
+            setGenQuizId(quiz.id);
+            setNumQuestions(quiz.number_of_questions);
+          }
+          // else: idle, show upload view
         }
-        // else: idle, show upload view
+
+        // Store recent quizzes for the "Recent Generations" section
+        const recent = quizzes.slice(0, 5);
+        setRecentQuizzes(recent);
       } catch {
         // Silent — show empty upload view
       } finally {
@@ -565,6 +589,86 @@ function UploadMaterial() {
                   ? "Retry Failed"
                   : "Generate Quiz"}
               </button>
+            </div>
+          )}
+
+          {/* ── Recent Generations ──────────────────────────── */}
+          {recentQuizzes.length > 0 && !isAnyUploading && (
+            <div className="upload-material__recent">
+              <div className="upload-material__recent-header">
+                <h3>Recent Generations</h3>
+                <button
+                  type="button"
+                  className="upload-material__see-all"
+                  onClick={() => navigate("/quizzes")}
+                >
+                  See all
+                </button>
+              </div>
+              <div className="upload-material__recent-list">
+                {recentQuizzes.map((quiz) => (
+                  <div key={quiz.id} className="upload-material__recent-item">
+                    <div className="upload-material__recent-info">
+                      <span className="upload-material__recent-title">{quiz.title}</span>
+                      <span
+                        className={`upload-material__recent-status upload-material__recent-status--${quiz.status}`}
+                      >
+                        {quiz.status === "ready" && "Ready"}
+                        {quiz.status === "generating" && "Generating..."}
+                        {quiz.status === "failed" && "Failed"}
+                        {quiz.status === "queued" && "Queued"}
+                      </span>
+                    </div>
+                    <div className="upload-material__recent-actions">
+                      {quiz.status === "ready" && (
+                        <button
+                          type="button"
+                          className="upload-material__action-btn upload-material__action-btn--primary"
+                          onClick={() => navigate(`/quiz?id=${quiz.id}`)}
+                        >
+                          Start
+                        </button>
+                      )}
+                      {quiz.status === "failed" && (
+                        <>
+                          <button
+                            type="button"
+                            className="upload-material__action-btn upload-material__action-btn--retry"
+                            onClick={() => {
+                              setGenQuizId(quiz.id);
+                              setNumQuestions(quiz.number_of_questions);
+                              setGenPhase("generating");
+                              pollQuizStatus(quiz.id);
+                            }}
+                            title="Retry generation"
+                          >
+                            <RotateCcw size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="upload-material__action-btn upload-material__action-btn--delete"
+                            onClick={async () => {
+                              try {
+                                await deleteQuiz(quiz.id);
+                                setRecentQuizzes((prev) => prev.filter((q) => q.id !== quiz.id));
+                                toast.success("Quiz deleted");
+                              } catch {
+                                toast.error("Failed to delete quiz");
+                              }
+                            }}
+                            title="Delete quiz"
+                          >
+                            <X size={14} />
+                          </button>
+                        </>
+                      )}
+                      {quiz.status === "generating" && (
+                        <Loader2 size={14} className="upload-material__spin" style={{ color: "var(--primary)" }} />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </>

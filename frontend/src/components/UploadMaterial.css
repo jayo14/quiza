@@ -605,6 +605,141 @@
   color: #ef4444;
 }
 
+/* Recent Generations */
+
+.upload-material__recent {
+  margin-top: 32px;
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+}
+
+.upload-material__recent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.upload-material__recent-header h3 {
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.upload-material__see-all {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.upload-material__see-all:hover {
+  text-decoration: underline;
+}
+
+.upload-material__recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upload-material__recent-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.upload-material__recent-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.upload-material__recent-title {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-material__recent-status {
+  font-size: 12px;
+}
+
+.upload-material__recent-status--ready {
+  color: #10b981;
+}
+
+.upload-material__recent-status--generating {
+  color: var(--primary);
+}
+
+.upload-material__recent-status--failed {
+  color: #ef4444;
+}
+
+.upload-material__recent-status--queued {
+  color: var(--text-secondary);
+}
+
+.upload-material__recent-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.upload-material__action-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary, rgba(255, 255, 255, 0.05));
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-material__action-btn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.upload-material__action-btn--primary {
+  width: auto;
+  padding: 0 12px;
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.upload-material__action-btn--primary:hover {
+  opacity: 0.85;
+}
+
+.upload-material__action-btn--retry:hover {
+  background: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.upload-material__action-btn--delete:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+}
+
 /* Mobile */
 
 @media (max-width: 600px) {
