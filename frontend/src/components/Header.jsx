@@ -27,7 +27,13 @@ function Header({ onToggleMenu }) {
         </button>
 
         <div className="header__profile">
-          <div className="header__avatar">{user?.name?.charAt(0) || "U"}</div>
+          <div className="header__avatar">
+            {user?.profile_image ? (
+              <img src={user.profile_image} alt={user.name} />
+            ) : (
+              user?.name?.charAt(0) || "U"
+            )}
+          </div>
 
           <div className="header__user">
             <span>{user?.name || "User"}</span>

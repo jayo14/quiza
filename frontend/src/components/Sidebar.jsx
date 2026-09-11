@@ -109,8 +109,11 @@ function Sidebar({ isOpen, onClose }) {
         <div className="sidebar__bottom">
           <div className="sidebar__profile">
             <div className="sidebar__avatar">
-              {" "}
-              {user?.name?.charAt(0).toUpperCase() || "U"}
+              {user?.profile_image ? (
+                <img src={user.profile_image} alt={user.name} />
+              ) : (
+                user?.name?.charAt(0).toUpperCase() || "U"
+              )}
             </div>
             <div>
               <p>{user?.name || "User"}</p>
