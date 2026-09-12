@@ -105,48 +105,18 @@ async def recover_stale_states():
         db.close()
 
 
-_celery_worker_proc = None
-
-
 @app.on_event("startup")
 def start_celery_worker_if_configured():
-    global _celery_worker_proc
     if not settings.auto_start_celery or settings.app_env == "test":
         return
-    import subprocess
-    import sys
-    try:
-        from app.core.celery_app import celery_app
-        inspector = celery_app.control.inspect(timeout=0.5)
-        ping_res = inspector.ping() if inspector else None
-        if ping_res:
-            logger.info("Active Celery worker detected.")
-            return
-    except Exception:
-        pass
-
-    try:
-        logger.info("Auto-starting Celery worker subprocess...")
-        _celery_worker_proc = subprocess.Popen(
-            [sys.executable, "-m", "celery", "-A", "app.core.celery_app", "worker", "--loglevel=info", "--concurrency=2"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        logger.info("Celery worker started with PID %d", _celery_worker_proc.pid)
-    except Exception as exc:
-        logger.warning("Could not auto-start Celery worker: %s", exc)
+    from app.core.celery_process import start_celery_worker
+    start_celery_worker()
 
 
 @app.on_event("shutdown")
 def stop_celery_worker_if_managed():
-    global _celery_worker_proc
-    if _celery_worker_proc and _celery_worker_proc.poll() is None:
-        logger.info("Terminating auto-started Celery worker (PID %d)...", _celery_worker_proc.pid)
-        _celery_worker_proc.terminate()
-        try:
-            _celery_worker_proc.wait(timeout=3)
-        except Exception:
-            _celery_worker_proc.kill()
+    from app.core.celery_process import stop_celery_worker
+    stop_celery_worker()
 
 
 @app.get("/", include_in_schema=False)
