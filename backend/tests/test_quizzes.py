@@ -132,3 +132,21 @@ def test_list_quizzes_reports_actual_question_count(client, signup):
     assert items[0]["id"] == quiz_id
     assert items[0]["question_count"] == 3
 
+
+def test_true_false_questions_have_default_options(client, signup):
+    headers, _ = signup()
+    material_id = _upload_ready_material(client, headers)
+    generated = generate_quiz_with_fakes(
+        client, headers, material_id=material_id, questions=true_false_questions("Topic", 2)
+    )
+    quiz_id = generated.json()["id"]
+
+    response = client.get(f"/api/v1/quizzes/{quiz_id}/questions", headers=headers)
+    assert response.status_code == 200
+    questions = response.json()
+    assert len(questions) == 2
+    for q in questions:
+        assert q["question_type"] == "true_false"
+        assert q["options"] == ["True", "False"]
+
+
