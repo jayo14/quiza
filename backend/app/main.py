@@ -46,7 +46,8 @@ async def recover_stale_states():
     from app.db.session import SessionLocal
     from app.models.material import Material
     from app.models.quiz import Quiz
-    from app.models.enums import MaterialStatus, QuizStatus
+    from app.models.generation_job import GenerationJob
+    from app.models.enums import GenerationJobStatus, MaterialStatus, QuizStatus
 
     db = SessionLocal()
     try:
@@ -73,6 +74,19 @@ async def recover_stale_states():
             db.add(quiz)
         if stale_quizzes:
             logger.warning("Recovered %d stale quizzes stuck in GENERATING", len(stale_quizzes))
+
+        stale_jobs = db.query(GenerationJob).filter(
+            GenerationJob.status == GenerationJobStatus.PROCESSING,
+            GenerationJob.updated_at < threshold,
+        ).all()
+        for job in stale_jobs:
+            job.status = GenerationJobStatus.FAILED
+            job.current_stage = "failed"
+            job.error_message = "Generation timed out. Please try again."
+            job.completed_at = datetime.now(timezone.utc)
+            db.add(job)
+        if stale_jobs:
+            logger.warning("Recovered %d stale generation jobs", len(stale_jobs))
 
         db.commit()
     except Exception:
