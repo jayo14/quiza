@@ -85,3 +85,29 @@ def test_delete_material_removes_it(client, signup):
 
     get_after_delete = client.get(f"/api/v1/materials/{material_id}", headers=headers)
     assert get_after_delete.status_code == 404
+
+
+def test_delete_material_with_associated_quizzes_succeeds(client, signup):
+    from unittest.mock import patch
+    import asyncio
+    from tests.fakes import FakeEmbeddingProvider, generate_quiz_with_fakes, true_false_questions
+
+    headers, _ = signup()
+    with patch("app.ai.rag.ingestion.get_embedding_provider", return_value=FakeEmbeddingProvider()):
+        upload = _upload_text_material(client, headers)
+        material_id = upload.json()["id"]
+        from app.ai.rag.ingestion import run_ingestion_for_material
+        asyncio.run(run_ingestion_for_material(material_id))
+
+    # Generate a quiz associated with this material
+    quiz_res = generate_quiz_with_fakes(client, headers, material_id=material_id, questions=true_false_questions("Topic", 2))
+    assert quiz_res.status_code == 201
+
+    # Deleting material should delete cleanly without NotNullViolation on quizzes.material_id
+    delete = client.delete(f"/api/v1/materials/{material_id}", headers=headers)
+    assert delete.status_code == 204
+
+    # Ensure material is gone
+    get_mat = client.get(f"/api/v1/materials/{material_id}", headers=headers)
+    assert get_mat.status_code == 404
+
