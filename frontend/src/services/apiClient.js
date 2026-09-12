@@ -178,6 +178,7 @@ export async function generateQuizBackground({
   material_id,
   material_ids,
   number_of_questions = 10,
+  question_count,
   difficulty = "medium",
   question_types = ["multiple_choice"],
 }) {
@@ -187,7 +188,7 @@ export async function generateQuizBackground({
     body: JSON.stringify({
       material_id,
       material_ids,
-      number_of_questions,
+      question_count: question_count ?? number_of_questions,
       difficulty,
       question_types,
     }),

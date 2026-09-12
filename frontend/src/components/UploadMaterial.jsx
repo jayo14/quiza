@@ -145,7 +145,7 @@ function UploadMaterial() {
     try {
       const created = await generateQuizBackground({
         material_ids: materialIds,
-        number_of_questions: numQuestions,
+        question_count: numQuestions,
         difficulty: "medium",
         question_types: ["multiple_choice", "true_false"],
       });
