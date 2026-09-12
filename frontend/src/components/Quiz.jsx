@@ -131,7 +131,10 @@ function Quiz() {
     );
   }
 
-  const options = question.options || [];
+  const options =
+    question?.options && question.options.length > 0
+      ? question.options
+      : (question?.question_type === "true_false" ? ["True", "False"] : []);
 
   return (
     <section className="quiz">
