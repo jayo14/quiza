@@ -105,3 +105,42 @@ def test_list_attempts_only_returns_own_attempts(client, signup):
 
     assert len(client.get("/api/v1/attempts", headers=headers_a).json()) == 1
     assert len(client.get("/api/v1/attempts", headers=headers_b).json()) == 0
+
+
+def test_start_attempt_handles_multiple_in_progress_attempts(client, signup):
+    from app.db.session import SessionLocal
+    from app.models.attempt import QuizAttempt
+    from app.models.enums import AttemptStatus
+    from datetime import datetime, timezone, timedelta
+
+    headers, user_data = signup(email="multattempts@example.com")
+    quiz_id, _ = _setup_ready_quiz(client, headers)
+
+    # Insert two in-progress attempts manually to simulate concurrency or race condition
+    db = SessionLocal()
+    now = datetime.now(timezone.utc)
+    att1 = QuizAttempt(
+        quiz_id=quiz_id,
+        user_id=user_data["id"],
+        status=AttemptStatus.IN_PROGRESS,
+        started_at=now - timedelta(minutes=5),
+        total_questions=4,
+    )
+    att2 = QuizAttempt(
+        quiz_id=quiz_id,
+        user_id=user_data["id"],
+        status=AttemptStatus.IN_PROGRESS,
+        started_at=now,
+        total_questions=4,
+    )
+    db.add_all([att1, att2])
+    db.commit()
+    att2_id = att2.id
+    db.close()
+
+    # Calling start_attempt should not raise MultipleResultsFound
+    response = client.post(f"/api/v1/quizzes/{quiz_id}/attempts", headers=headers)
+    assert response.status_code in (200, 201)
+    body = response.json()
+    assert body["status"] == "in_progress"
+    assert body["id"] == att2_id
