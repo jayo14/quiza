@@ -127,6 +127,55 @@ def get_generation_job(
     return GenerationJobRead.model_validate(job)
 
 
+@router.post(
+    "/generation-jobs/{job_id}/retry", response_model=GenerationJobRead, status_code=202,
+    dependencies=[Depends(enforce_ai_rate_limit)],
+)
+def retry_generation_job(
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> GenerationJobRead:
+    from fastapi import HTTPException
+    from app.models.generation_job import GenerationJob
+    from app.models.enums import GenerationJobStatus
+    from app.core.exceptions import NotFoundError
+    from app.tasks import generate_quiz_task
+
+    job = db.get(GenerationJob, job_id)
+    if not job or job.user_id != current_user.id:
+        raise NotFoundError("Generation job not found.")
+
+    job.status = GenerationJobStatus.QUEUED
+    job.progress = 0
+    job.current_stage = "queued"
+    job.error_message = None
+    job.started_at = None
+    job.completed_at = None
+    db.commit()
+    db.refresh(job)
+
+    try:
+        task_result = generate_quiz_task.delay(
+            job_id=job.id,
+            user_id=current_user.id,
+            material_ids=job.material_ids,
+            question_count=job.question_count,
+            difficulty=job.difficulty,
+            question_types=job.question_types,
+        )
+        job.celery_task_id = task_result.id
+        db.commit()
+        db.refresh(job)
+    except Exception as exc:
+        job.status = GenerationJobStatus.FAILED
+        job.error_message = "The quiz generation worker could not be reached."
+        db.commit()
+        raise HTTPException(status_code=503, detail=job.error_message) from exc
+
+    return GenerationJobRead.model_validate(job)
+
+
 @router.get("", response_model=list[QuizRead])
 def list_quizzes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[QuizRead]:
     return quiz_service.list_quizzes(db, user=current_user)
