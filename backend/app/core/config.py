@@ -1,6 +1,7 @@
 from functools import lru_cache
 
 from pathlib import Path
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _backend_dir = Path(__file__).resolve().parents[2]
 _env_candidates = (
