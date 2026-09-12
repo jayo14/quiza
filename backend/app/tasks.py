@@ -154,7 +154,7 @@ def generate_quiz_task(
                     order_index=index,
                     question_type=question.question_type,
                     question_text=question.question,
-                    options=question.options,
+                    options=question.options if question.options else (["True", "False"] if question.question_type == QuestionType.TRUE_FALSE else None),
                     correct_answer=question.correct_answer,
                     explanation=question.explanation,
                     topic=question.topic,

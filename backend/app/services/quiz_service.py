@@ -76,7 +76,7 @@ async def generate_quiz(
                     order_index=i,
                     question_type=q.question_type,
                     question_text=q.question,
-                    options=q.options,
+                    options=q.options if q.options else (["True", "False"] if q.question_type == QuestionType.TRUE_FALSE else None),
                     correct_answer=q.correct_answer,
                     explanation=q.explanation,
                     topic=q.topic,
