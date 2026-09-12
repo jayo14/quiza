@@ -1,4 +1,6 @@
+import asyncio
 import logging
+from datetime import datetime, timezone
 
 from app.core.celery_app import celery_app
 from app.db.session import SessionLocal
@@ -6,25 +8,24 @@ from app.db.session import SessionLocal
 logger = logging.getLogger(__name__)
 
 
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 @celery_app.task(bind=True, name="tasks.ingest_material")
 def ingest_material_task(self, material_id: str) -> dict:
-    """Celery task: ingest a material's content into the vector store."""
-    import asyncio
-    from app.models.material import Material
-    from app.models.enums import MaterialStatus
+    """Ingest a material when explicitly requested by a generation job."""
     from app.ai.rag.ingestion import run_ingestion_for_material
+    from app.models.enums import MaterialStatus
+    from app.models.material import Material
 
     db = SessionLocal()
     try:
         material = db.get(Material, material_id)
         if not material:
             return {"status": "error", "message": f"Material {material_id} not found"}
-
         if material.status == MaterialStatus.READY:
             return {"status": "already_ready", "material_id": material_id}
-
-        if material.status == MaterialStatus.PROCESSING:
-            return {"status": "already_processing", "material_id": material_id}
 
         loop = asyncio.new_event_loop()
         try:
@@ -32,87 +33,83 @@ def ingest_material_task(self, material_id: str) -> dict:
         finally:
             loop.close()
 
-        # Re-check status
         db.expire_all()
         material = db.get(Material, material_id)
-        return {
-            "status": material.status if material else "unknown",
-            "material_id": material_id,
-        }
-    except Exception as exc:
-        logger.exception("Celery ingest failed for material %s", material_id)
-        return {"status": "error", "message": str(exc)}
+        return {"status": material.status if material else "unknown", "material_id": material_id}
     finally:
         db.close()
 
 
-@celery_app.task(bind=True, name="tasks.generate_quiz")
+@celery_app.task(bind=True, name="tasks.generate_quiz", max_retries=0)
 def generate_quiz_task(
     self,
-    quiz_id: str,
+    job_id: str,
     user_id: str,
     material_ids: list[str],
-    number_of_questions: int,
+    question_count: int,
     difficulty: str,
     question_types: list[str],
 ) -> dict:
-    """Celery task: generate quiz questions from ingested materials."""
-    import asyncio
-    from app.models.enums import Difficulty, QuestionType, QuizStatus
+    """Process one durable generation job from start to finish."""
+    from app.ai.quiz_generator import generate_quiz_questions
+    from app.ai.rag.ingestion import run_ingestion_for_material
+    from app.core.exceptions import safe_error_message
+    from app.models.enums import Difficulty, GenerationJobStatus, MaterialStatus, QuestionType, QuizStatus
+    from app.models.generation_job import GenerationJob
+    from app.models.material import Material
     from app.models.question import Question
     from app.models.quiz import Quiz
-    from app.models.material import Material
-    from app.models.enums import MaterialStatus
-    from app.ai.rag.ingestion import run_ingestion_for_material
-    from app.ai.quiz_generator import generate_quiz_questions
-    from app.core.exceptions import safe_error_message
 
     db = SessionLocal()
+    job = None
+
+    def update_job(stage: str, progress: int) -> None:
+        job.current_stage = stage
+        job.progress = progress
+        db.add(job)
+        db.commit()
+
     try:
-        quiz = db.get(Quiz, quiz_id)
-        if not quiz:
-            return {"status": "error", "message": f"Quiz {quiz_id} not found"}
+        job = db.get(GenerationJob, job_id)
+        if not job or job.user_id != user_id:
+            return {"status": "error", "message": "Generation job not found"}
+        if job.status == GenerationJobStatus.COMPLETED:
+            return {"status": "already_completed", "job_id": job_id, "quiz_id": job.quiz_id}
+        if job.status == GenerationJobStatus.PROCESSING:
+            return {"status": "already_processing", "job_id": job_id}
 
-        # Step 1: Ingest any materials that aren't ready yet
-        for mid in material_ids:
-            mat = db.get(Material, mid)
-            if mat and mat.status in (MaterialStatus.UPLOADED, MaterialStatus.QUEUED):
-                logger.info("Ingesting material %s before quiz generation...", mat.filename)
+        job.status = GenerationJobStatus.PROCESSING
+        job.started_at = job.started_at or _utcnow()
+        job.celery_task_id = job.celery_task_id or self.request.id
+        db.add(job)
+        db.commit()
+
+        update_job("preparing_materials", 5)
+        materials = [db.get(Material, material_id) for material_id in material_ids]
+        if any(material is None or material.user_id != user_id for material in materials):
+            raise ValueError("One or more selected materials could not be found.")
+
+        for index, material in enumerate(materials):
+            if material.status != MaterialStatus.READY:
+                loop = asyncio.new_event_loop()
                 try:
-                    loop = asyncio.new_event_loop()
-                    try:
-                        loop.run_until_complete(run_ingestion_for_material(mat.id))
-                    finally:
-                        loop.close()
-                except Exception as e:
-                    logger.error("Ingestion failed for %s: %s", mat.filename, e)
+                    loop.run_until_complete(run_ingestion_for_material(material.id))
+                finally:
+                    loop.close()
+            update_job("reading_materials", 10 + int((index + 1) / len(materials) * 30))
 
-        # Step 2: Refresh materials to check status
         db.expire_all()
-        materials = [db.get(Material, mid) for mid in material_ids]
-        materials = [m for m in materials if m]
-
-        failed = [m for m in materials if m.status == MaterialStatus.FAILED]
+        materials = [db.get(Material, material_id) for material_id in material_ids]
+        failed = [material for material in materials if material.status == MaterialStatus.FAILED]
         if failed:
-            quiz.status = QuizStatus.FAILED
-            quiz.generation_error = f"Ingestion failed for: {', '.join(m.filename for m in failed)}"
-            db.add(quiz)
-            db.commit()
-            return {"status": "failed", "message": quiz.generation_error}
+            raise ValueError(
+                "Material processing failed: " + ", ".join(material.filename for material in failed)
+            )
+        if any(material.status != MaterialStatus.READY for material in materials):
+            raise ValueError("Selected materials are not ready for generation.")
 
-        unready = [m for m in materials if m.status != MaterialStatus.READY]
-        if unready:
-            quiz.status = QuizStatus.FAILED
-            quiz.generation_error = f"Materials still processing: {', '.join(m.filename for m in unready)}"
-            db.add(quiz)
-            db.commit()
-            return {"status": "failed", "message": quiz.generation_error}
-
-        # Step 3: Generate quiz questions
         primary = materials[0]
-        diff = Difficulty(difficulty)
-        q_types = [QuestionType(t) for t in question_types]
-
+        update_job("finding_relevant_content", 50)
         loop = asyncio.new_event_loop()
         try:
             generated = loop.run_until_complete(
@@ -121,49 +118,76 @@ def generate_quiz_task(
                     user_id=user_id,
                     material_id=primary.id,
                     material_ids=material_ids,
-                    number_of_questions=number_of_questions,
-                    difficulty=diff,
-                    question_types=q_types,
+                    number_of_questions=question_count,
+                    difficulty=Difficulty(difficulty),
+                    question_types=[QuestionType(value) for value in question_types],
                 )
             )
         finally:
             loop.close()
 
+        if len(generated) != question_count:
+            raise ValueError(
+                f"Generated {len(generated)} questions, but {question_count} were requested."
+            )
+
+        update_job("saving_quiz", 90)
+        title = f"Quiz: {primary.title}" if len(materials) == 1 else f"Multi-Material Quiz ({len(materials)} sources)"
+        quiz = Quiz(
+            user_id=user_id,
+            material_id=primary.id,
+            title=title,
+            difficulty=Difficulty(difficulty),
+            number_of_questions=question_count,
+            status=QuizStatus.READY,
+        )
+        db.add(quiz)
+        db.flush()
         db.add_all(
             [
                 Question(
                     quiz_id=quiz.id,
-                    order_index=i,
-                    question_type=q.question_type,
-                    question_text=q.question,
-                    options=q.options,
-                    correct_answer=q.correct_answer,
-                    explanation=q.explanation,
-                    topic=q.topic,
-                    difficulty=q.difficulty,
-                    source_reference=q.source_reference,
+                    order_index=index,
+                    question_type=question.question_type,
+                    question_text=question.question,
+                    options=question.options,
+                    correct_answer=question.correct_answer,
+                    explanation=question.explanation,
+                    topic=question.topic,
+                    difficulty=question.difficulty,
+                    source_reference=question.source_reference,
                 )
-                for i, q in enumerate(generated)
+                for index, question in enumerate(generated)
             ]
         )
-        quiz.status = QuizStatus.READY
-        quiz.generation_error = None
-        db.add(quiz)
+        job.quiz_id = quiz.id
+        job.status = GenerationJobStatus.COMPLETED
+        job.progress = 100
+        job.current_stage = "completed"
+        job.completed_at = _utcnow()
+        job.error_message = None
         db.commit()
-        logger.info("Celery quiz %s generated %d questions.", quiz_id, len(generated))
-        return {"status": "ready", "quiz_id": quiz_id, "questions": len(generated)}
-
+        logger.info(
+            "Generation job completed job_id=%s task_id=%s user_id=%s materials=%s question_count=%d",
+            job_id,
+            self.request.id,
+            user_id,
+            material_ids,
+            question_count,
+        )
+        return {"status": "completed", "job_id": job_id, "quiz_id": quiz.id}
     except Exception as exc:
-        logger.exception("Celery quiz generation failed for %s", quiz_id)
-        try:
-            quiz = db.get(Quiz, quiz_id)
-            if quiz:
-                quiz.status = QuizStatus.FAILED
-                quiz.generation_error = safe_error_message(exc)
-                db.add(quiz)
-                db.commit()
-        except Exception:
-            logger.exception("Failed to update quiz status for %s", quiz_id)
-        return {"status": "error", "message": str(exc)}
+        logger.exception("Generation job failed job_id=%s task_id=%s", job_id, self.request.id)
+        db.rollback()
+        if job is None:
+            job = db.get(GenerationJob, job_id)
+        if job:
+            job.status = GenerationJobStatus.FAILED
+            job.current_stage = "failed"
+            job.error_message = safe_error_message(exc)
+            job.completed_at = _utcnow()
+            db.add(job)
+            db.commit()
+        return {"status": "failed", "job_id": job_id, "message": safe_error_message(exc)}
     finally:
         db.close()
