@@ -29,7 +29,10 @@ function Dashboard() {
           getHealth().catch(() => ({ status: "unavailable" })),
         ]);
 
-        setQuizzes(qList || []);
+        const validQuizzes = (qList || []).filter(
+          (q) => (q.status || "").toLowerCase() !== "failed"
+        );
+        setQuizzes(validQuizzes);
         setAttempts(aList || []);
         setWeaknesses(wList || []);
         setHealth(hStatus?.status || "online");

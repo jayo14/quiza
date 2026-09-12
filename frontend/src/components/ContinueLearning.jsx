@@ -2,7 +2,10 @@ import { Link } from "react-router-dom";
 import "./ContinueLearning.css";
 
 function ContinueLearning({ quizzes = [] }) {
-  const latestQuiz = quizzes[0];
+  const validQuizzes = quizzes.filter(
+    (quiz) => (quiz.status || "").toLowerCase() !== "failed"
+  );
+  const latestQuiz = validQuizzes[0];
 
   if (!latestQuiz) {
     return (

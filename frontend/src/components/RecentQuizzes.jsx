@@ -3,7 +3,10 @@ import "./RecentQuizzes.css";
 
 function RecentQuizzes({ quizzes = [] }) {
   const navigate = useNavigate();
-  const recentItems = quizzes.slice(0, 4);
+  const validQuizzes = quizzes.filter(
+    (quiz) => (quiz.status || "").toLowerCase() !== "failed"
+  );
+  const recentItems = validQuizzes.slice(0, 4);
 
   return (
     <section className="recent-quizzes">
