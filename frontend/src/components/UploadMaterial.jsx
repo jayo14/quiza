@@ -162,6 +162,16 @@ function UploadMaterial() {
   }
 
   const generating = job && ["queued", "processing"].includes(job.status);
+  const stageLabel = job?.current_stage
+    ?.replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const jobTitle = job?.status === "completed"
+    ? "Quiz ready"
+    : job?.status === "failed"
+      ? "Generation failed"
+      : job?.status === "queued"
+        ? "Waiting to start"
+        : "Generating your quiz";
   return (
     <section className="upload-material">
       <div className="upload-material__header">
@@ -218,10 +228,33 @@ function UploadMaterial() {
       </div>
 
       {job && (
-        <div className="upload-material__processing">
-          <h2>{job.status === "completed" ? "Quiz ready" : job.status === "failed" ? "Generation failed" : "Generating your quiz"}</h2>
-          <p>{job.current_stage?.replaceAll("_", " ") || "Waiting to start"} · {job.question_count} questions</p>
-          {job.status === "failed" && <p className="upload-material__error">{job.error_message}</p>}
+        <div className={`upload-material__processing upload-material__processing--${job.status}`}>
+          <div className="upload-material__processing-header">
+            <div>
+              <span className="upload-material__eyebrow">Generation job</span>
+              <h2>{jobTitle}</h2>
+            </div>
+            <span className="upload-material__status-pill">{job.status}</span>
+          </div>
+          <div className="upload-material__job-details">
+            <div><span>Materials</span><strong>{job.material_ids.length} selected</strong></div>
+            <div><span>Questions</span><strong>{job.question_count}</strong></div>
+            <div><span>Progress</span><strong>{job.progress}%</strong></div>
+          </div>
+          <div className="upload-material__progress-bar-wrap">
+            <div className="upload-material__progress-bar-fill" style={{ width: `${job.progress}%` }} />
+          </div>
+          <p className="upload-material__job-stage">
+            {stageLabel || "Waiting to start"}{generating ? " · This may take a few minutes." : ""}
+          </p>
+          {job.status === "completed" && job.quiz_id && (
+            <button type="button" onClick={() => navigate(`/quiz?id=${job.quiz_id}`)}>
+              Start Quiz
+            </button>
+          )}
+          {job.status === "failed" && (
+            <p className="upload-material__error">{job.error_message || "We couldn't generate this quiz. Please try again."}</p>
+          )}
         </div>
       )}
     </section>

@@ -516,6 +516,97 @@
 
 .upload-material__processing {
   margin-top: 32px;
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+}
+
+.upload-material__processing-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.upload-material__eyebrow {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.upload-material__processing h2 {
+  margin-top: 6px;
+  color: var(--text-primary);
+  font-size: 20px;
+}
+
+.upload-material__status-pill {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.upload-material__job-details {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.upload-material__job-details div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.upload-material__job-details span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.upload-material__job-details strong {
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.upload-material__job-stage {
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.upload-material__processing button {
+  margin-top: 18px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+}
+
+.upload-material__processing--failed {
+  border-color: #fca5a5;
+}
+
+.upload-material__processing--completed {
+  border-color: #86efac;
+}
+
+@media (max-width: 640px) {
+  .upload-material__job-details {
+    grid-template-columns: 1fr;
+  }
 }
 
 .upload-material__phase {
