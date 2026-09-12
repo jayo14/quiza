@@ -37,6 +37,8 @@ function UploadMaterial() {
   const navigate = useNavigate();
   const poller = useRef(null);
   const [fileList, setFileList] = useState([]);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [difficulty, setDifficulty] = useState("medium");
   const [error, setError] = useState("");
   const [numQuestions, setNumQuestions] = useState(10);
   const [job, setJob] = useState(null);
@@ -66,7 +68,9 @@ function UploadMaterial() {
     const restore = async () => {
       try {
         const [materials, jobs] = await Promise.all([listMaterials(), listGenerationJobs()]);
-        setFileList((materials || []).map(materialToItem));
+        const items = (materials || []).map(materialToItem);
+        setFileList(items);
+        setSelectedIds(new Set(items.filter((item) => item.materialId).map((item) => item.materialId)));
         const activeJob = (jobs || []).find((item) =>
           ["queued", "processing"].includes(item.status)
         ) || (jobs || [])[0];
@@ -120,6 +124,9 @@ function UploadMaterial() {
             ? { ...item, status: "uploaded", progress: 100, materialId: material.id, rawFile: null }
             : item
         ));
+        if (material?.id) {
+          setSelectedIds((prev) => new Set([...prev, material.id]));
+        }
       } catch (err) {
         setFileList((items) => items.map((item) =>
           item.id === itemId ? { ...item, status: "error", error: err.message } : item
@@ -129,24 +136,54 @@ function UploadMaterial() {
   };
 
   const removeMaterial = async (item) => {
-    if (item.materialId) await deleteMaterial(item.materialId).catch(() => {});
+    if (item.materialId) {
+      await deleteMaterial(item.materialId).catch(() => {});
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.materialId);
+        return next;
+      });
+    }
     setFileList((items) => items.filter((candidate) => candidate.id !== item.id));
   };
 
+  const toggleMaterialSelection = (materialId) => {
+    if (!materialId) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(materialId)) {
+        next.delete(materialId);
+      } else {
+        next.add(materialId);
+      }
+      return next;
+    });
+  };
+
+  const availableMaterialIds = fileList
+    .filter((item) => item.status === "uploaded" && item.materialId)
+    .map((item) => item.materialId);
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === availableMaterialIds.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(availableMaterialIds));
+    }
+  };
+
   const handleGenerate = async () => {
-    const materialIds = fileList
-      .filter((item) => item.status === "uploaded" && item.materialId)
-      .map((item) => item.materialId);
-    if (!materialIds.length) {
-      setError("Upload at least one material first.");
+    const targetMaterialIds = availableMaterialIds.filter((id) => selectedIds.has(id));
+    if (!targetMaterialIds.length) {
+      setError(fileList.length === 0 ? "Upload at least one material first." : "Select at least one material to generate a quiz.");
       return;
     }
     setError("");
     try {
       const created = await generateQuizBackground({
-        material_ids: materialIds,
+        material_ids: targetMaterialIds,
         question_count: numQuestions,
-        difficulty: "medium",
+        difficulty,
         question_types: ["multiple_choice", "true_false"],
       });
       setJob(created);
@@ -193,14 +230,46 @@ function UploadMaterial() {
       {error && <p className="upload-material__error">{error}</p>}
       {fileList.length > 0 && (
         <div className="upload-material__files">
-          <h3>Materials</h3>
+          <div className="upload-material__files-header">
+            <div>
+              <h3>Materials</h3>
+              <span className="upload-material__files-subtitle">
+                {selectedIds.size} of {availableMaterialIds.length} selected for quiz
+              </span>
+            </div>
+            {availableMaterialIds.length > 1 && (
+              <button
+                type="button"
+                className="upload-material__select-all-btn"
+                onClick={toggleSelectAll}
+              >
+                {selectedIds.size === availableMaterialIds.length ? "Deselect all" : "Select all"}
+              </button>
+            )}
+          </div>
           {fileList.map((item) => (
-            <div className="upload-material__file" key={item.id}>
-              <div>
-                <strong>{item.name}</strong>
-                <span className="upload-material__file-status">
-                  {item.status === "uploading" ? `${item.progress}%` : item.error || `${item.sizeLabel} · Uploaded`}
-                </span>
+            <div
+              className={`upload-material__file ${
+                item.materialId && selectedIds.has(item.materialId) ? "upload-material__file--selected" : ""
+              }`}
+              key={item.id}
+            >
+              <div className="upload-material__file-left">
+                {item.status === "uploaded" && item.materialId && (
+                  <input
+                    type="checkbox"
+                    className="upload-material__checkbox"
+                    checked={selectedIds.has(item.materialId)}
+                    onChange={() => toggleMaterialSelection(item.materialId)}
+                    aria-label={`Select ${item.name} for quiz`}
+                  />
+                )}
+                <div className="upload-material__file-details">
+                  <strong>{item.name}</strong>
+                  <span className="upload-material__file-status">
+                    {item.status === "uploading" ? `${item.progress}%` : item.error || `${item.sizeLabel} · Ready`}
+                  </span>
+                </div>
               </div>
               <button type="button" onClick={() => removeMaterial(item)} aria-label={`Remove ${item.name}`}>
                 <X size={16} />
