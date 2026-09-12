@@ -1,4 +1,4 @@
-﻿# Dependencies
+# Dependencies
 node_modules/
 frontend/node_modules/
 backend/venv/
@@ -29,3 +29,9 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+quiza.db
