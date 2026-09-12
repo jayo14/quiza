@@ -852,14 +852,60 @@
   font-size: 20px;
 }
 
+.upload-material__processing-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .upload-material__status-pill {
-  padding: 5px 9px;
+  padding: 5px 10px;
   border-radius: 999px;
   background: var(--bg-secondary);
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.upload-material__status-pill--completed {
+  background: rgba(53, 208, 127, 0.15);
+  color: var(--success);
+}
+
+.upload-material__status-pill--processing {
+  background: rgba(124, 106, 255, 0.15);
+  color: var(--primary);
+}
+
+.upload-material__status-pill--failed {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--error);
+}
+
+.upload-material__status-pill--queued {
+  background: rgba(245, 185, 66, 0.15);
+  color: var(--warning);
+}
+
+.upload-material__dismiss-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-material__dismiss-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
 }
 
 .upload-material__job-details {
@@ -894,14 +940,54 @@
   font-size: 13px;
 }
 
-.upload-material__processing button {
+.upload-material__start-btn {
   margin-top: 18px;
-  padding: 10px 16px;
-  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 22px;
   border-radius: var(--radius-sm);
   background: var(--primary);
   color: white;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-material__start-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.upload-material__job-failed-actions {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.upload-material__retry-job-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-material__retry-job-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .upload-material__processing--failed {

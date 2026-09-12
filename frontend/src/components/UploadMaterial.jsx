@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Sparkles, Upload, X } from "lucide-react";
+import { ArrowRight, Loader2, RotateCcw, Sparkles, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   deleteMaterial,
@@ -407,13 +407,27 @@ function UploadMaterial() {
         <div className={`upload-material__processing upload-material__processing--${job.status}`}>
           <div className="upload-material__processing-header">
             <div>
-              <span className="upload-material__eyebrow">Generation job</span>
+              <span className="upload-material__eyebrow">Generation Job</span>
               <h2>{jobTitle}</h2>
             </div>
-            <span className="upload-material__status-pill">{job.status}</span>
+            <div className="upload-material__processing-badges">
+              <span className={`upload-material__status-pill upload-material__status-pill--${job.status}`}>
+                {job.status}
+              </span>
+              {!generating && (
+                <button
+                  type="button"
+                  className="upload-material__dismiss-btn"
+                  onClick={() => setJob(null)}
+                  aria-label="Dismiss job status"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
           </div>
           <div className="upload-material__job-details">
-            <div><span>Materials</span><strong>{job.material_ids.length} selected</strong></div>
+            <div><span>Materials</span><strong>{job.material_ids?.length || 1} selected</strong></div>
             <div><span>Questions</span><strong>{job.question_count}</strong></div>
             <div><span>Progress</span><strong>{job.progress}%</strong></div>
           </div>
@@ -424,12 +438,29 @@ function UploadMaterial() {
             {stageLabel || "Waiting to start"}{generating ? " · This may take a few minutes." : ""}
           </p>
           {job.status === "completed" && job.quiz_id && (
-            <button type="button" onClick={() => navigate(`/quiz?id=${job.quiz_id}`)}>
-              Start Quiz
+            <button
+              type="button"
+              className="upload-material__start-btn"
+              onClick={() => navigate(`/quiz?id=${job.quiz_id}`)}
+            >
+              <span>Start Quiz</span>
+              <ArrowRight size={16} />
             </button>
           )}
           {job.status === "failed" && (
-            <p className="upload-material__error">{job.error_message || "We couldn't generate this quiz. Please try again."}</p>
+            <div className="upload-material__job-failed-actions">
+              <p className="upload-material__error">
+                {job.error_message || "We couldn't generate this quiz. Please try again."}
+              </p>
+              <button
+                type="button"
+                className="upload-material__retry-job-btn"
+                onClick={handleGenerate}
+              >
+                <RotateCcw size={15} />
+                <span>Try Again</span>
+              </button>
+            </div>
           )}
         </div>
       )}
