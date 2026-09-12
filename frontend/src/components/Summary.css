@@ -103,6 +103,22 @@
   border: 1px solid var(--border-color);
 }
 
+.summary__retake {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.summary__retake:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+  border-color: var(--primary);
+}
+
 @media (max-width: 600px) {
   .summary {
     padding: 20px 16px;
