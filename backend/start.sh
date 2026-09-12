@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo "Applying database migrations..."
+alembic upgrade head
+
 # Start Celery worker in background
 echo "Starting Celery worker..."
 celery -A app.core.celery_app worker --loglevel=info --concurrency=2 &

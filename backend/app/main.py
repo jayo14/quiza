@@ -38,6 +38,15 @@ def handle_quiza_error(request: Request, exc: QuizaError) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
+@app.exception_handler(Exception)
+def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled API error for %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "The server could not complete the request. Please try again."},
+    )
+
+
 app.include_router(api_router, prefix=settings.api_v1_prefix)
 
 
