@@ -63,7 +63,9 @@ class QuizRead(BaseModel):
     @property
     def question_count(self) -> int:
         questions = getattr(self, "questions", None)
-        return len(questions) if questions is not None else 0
+        if questions is not None and len(questions) > 0:
+            return len(questions)
+        return self.number_of_questions
 
 
 class QuizDetail(QuizRead):
