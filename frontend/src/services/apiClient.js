@@ -195,6 +195,22 @@ export async function generateQuizBackground({
   return handleResponse(response);
 }
 
+export async function listGenerationJobs() {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/quizzes/generation-jobs`, {
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+}
+
+export async function getGenerationJob(jobId) {
+  if (!isValidId(jobId)) throw new Error("Invalid generation job ID");
+  const response = await fetchWithTimeout(
+    `${API_BASE_URL}/quizzes/generation-jobs/${jobId}`,
+    { headers: getAuthHeaders() }
+  );
+  return handleResponse(response);
+}
+
 export async function listQuizzes() {
   const response = await fetchWithTimeout(`${API_BASE_URL}/quizzes`, {
     headers: getAuthHeaders(),
