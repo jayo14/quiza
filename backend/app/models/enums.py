@@ -32,6 +32,14 @@ class QuizStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class GenerationJobStatus(StrEnum):
+    QUEUED = "queued"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
 class AttemptStatus(StrEnum):
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"

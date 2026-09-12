@@ -31,3 +31,4 @@ class Quiz(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="quiz", cascade="all, delete-orphan", order_by="Question.order_index"
     )
     attempts: Mapped[list["QuizAttempt"]] = relationship(back_populates="quiz")
+    generation_job: Mapped["GenerationJob | None"] = relationship(back_populates="quiz")

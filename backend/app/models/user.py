@@ -19,6 +19,9 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     quizzes: Mapped[list["Quiz"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    generation_jobs: Mapped[list["GenerationJob"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     attempts: Mapped[list["QuizAttempt"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
