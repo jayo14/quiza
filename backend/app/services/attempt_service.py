@@ -83,7 +83,7 @@ def submit_attempt(
         from app.core.exceptions import NotFoundError
         raise NotFoundError("Attempt not found.")
     if attempt.status == AttemptStatus.COMPLETED:
-        raise ValidationFailedError("This attempt has already been submitted.")
+        return attempt
 
     quiz = quiz_service.get_owned_quiz(db, user=user, quiz_id=attempt.quiz_id)
     submission_by_question = {s.question_id: s for s in submissions}
