@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.exceptions import QuizaError
+from sqlalchemy.exc import SQLAlchemyError
 
 logger = logging.getLogger(__name__)
 
@@ -56,12 +57,23 @@ def handle_quiza_error(request: Request, exc: QuizaError) -> JSONResponse:
     )
 
 
+@app.exception_handler(SQLAlchemyError)
+def handle_database_error(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+    logger.exception("Database error occurred while processing %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Database is temporarily unreachable. Please try again shortly."},
+        headers=_get_cors_headers(request),
+    )
+
+
 @app.exception_handler(Exception)
 def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled API error for %s %s", request.method, request.url.path)
     return JSONResponse(
         status_code=500,
         content={"detail": "The server could not complete the request. Please try again."},
+        headers=_get_cors_headers(request),
     )
 
 
