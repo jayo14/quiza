@@ -97,8 +97,12 @@ async def run_ingestion_for_material(material_id: str) -> None:
             logger.warning("run_ingestion_for_material: material %s not found", material_id)
             return
 
-        if material.status == MaterialStatus.PROCESSING:
-            logger.info("run_ingestion_for_material: material %s already PROCESSING, skipping", material_id)
+        if material.status in (MaterialStatus.PROCESSING, MaterialStatus.READY):
+            logger.info(
+                "run_ingestion_for_material: material %s already %s, skipping",
+                material_id,
+                material.status,
+            )
             return
 
         material.status = MaterialStatus.PROCESSING
