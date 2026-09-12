@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from app.models.enums import Difficulty, QuestionType, QuizStatus
+from app.models.enums import Difficulty, GenerationJobStatus, QuestionType, QuizStatus
 
 
 class QuizGenerateRequest(BaseModel):
@@ -63,3 +63,23 @@ class QuizRead(BaseModel):
 
 class QuizDetail(QuizRead):
     questions: list[QuestionPublic]
+
+
+class GenerationJobRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    status: GenerationJobStatus
+    material_ids: list[str]
+    question_count: int
+    difficulty: Difficulty
+    question_types: list[QuestionType]
+    progress: int
+    current_stage: str
+    celery_task_id: str | None
+    quiz_id: str | None
+    error_message: str | None
+    created_at: datetime
+    started_at: datetime | None
+    completed_at: datetime | None
+    updated_at: datetime

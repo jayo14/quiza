@@ -6,7 +6,13 @@ from app.core.rate_limit import enforce_ai_rate_limit
 from app.core.exceptions import safe_error_message
 from app.models.user import User
 from app.schemas.attempt import AttemptRead
-from app.schemas.quiz import QuestionPublic, QuizDetail, QuizGenerateRequest, QuizRead
+from app.schemas.quiz import (
+    GenerationJobRead,
+    QuestionPublic,
+    QuizDetail,
+    QuizGenerateRequest,
+    QuizRead,
+)
 from app.services import attempt_service, quiz_service
 
 router = APIRouter(prefix="/quizzes", tags=["quizzes"])
@@ -33,55 +39,92 @@ async def generate_quiz(
 
 
 @router.post(
-    "/generate-background", response_model=QuizRead, status_code=202,
+    "/generate-background", response_model=GenerationJobRead, status_code=202,
     dependencies=[Depends(enforce_ai_rate_limit)],
 )
 async def generate_quiz_background(
     payload: QuizGenerateRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> QuizRead:
+) -> GenerationJobRead:
     """Queue quiz generation as a Celery task. Returns immediately.
 
-    Materials that aren't ingested yet will be ingested first, then quiz
-    questions are generated. Poll GET /quizzes/{id} to check completion.
+    Materials are ingested by the worker only when this job is processed.
     """
     from fastapi import HTTPException
     from app.services import material_service
-    from app.models.enums import QuizStatus
-    from app.models.quiz import Quiz
+    from app.models.generation_job import GenerationJob
+    from app.models.enums import GenerationJobStatus
     from app.tasks import generate_quiz_task
 
-    target_ids = list(set(filter(None, (payload.material_ids or []) + ([payload.material_id] if payload.material_id else []))))
+    target_ids = list(dict.fromkeys(
+        filter(None, (payload.material_ids or []) + ([payload.material_id] if payload.material_id else []))
+    ))
     if not target_ids:
         raise HTTPException(status_code=400, detail="At least one material_id is required.")
 
-    materials = [material_service.get_owned_material(db, user=current_user, material_id=mid) for mid in target_ids]
-    primary = materials[0]
-    title = f"Quiz: {primary.title}" if len(materials) == 1 else f"Multi-Material Quiz ({len(materials)} sources)"
+    for material_id in target_ids:
+        material_service.get_owned_material(db, user=current_user, material_id=material_id)
 
-    quiz = Quiz(
+    job = GenerationJob(
         user_id=current_user.id,
-        material_id=primary.id,
-        title=title,
-        difficulty=payload.difficulty,
-        number_of_questions=payload.number_of_questions,
-        status=QuizStatus.GENERATING,
-    )
-    db.add(quiz)
-    db.commit()
-    db.refresh(quiz)
-
-    generate_quiz_task.delay(
-        quiz_id=quiz.id,
-        user_id=current_user.id,
+        status=GenerationJobStatus.QUEUED,
         material_ids=target_ids,
-        number_of_questions=payload.number_of_questions,
+        question_count=payload.number_of_questions,
         difficulty=payload.difficulty.value,
-        question_types=[t.value for t in payload.question_types],
+        question_types=[question_type.value for question_type in payload.question_types],
     )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
 
-    return QuizRead.model_validate(quiz)
+    try:
+        task_result = generate_quiz_task.delay(
+            job_id=job.id,
+            user_id=current_user.id,
+            material_ids=target_ids,
+            question_count=payload.number_of_questions,
+            difficulty=payload.difficulty.value,
+            question_types=[t.value for t in payload.question_types],
+        )
+        job.celery_task_id = task_result.id
+        db.commit()
+        db.refresh(job)
+    except Exception as exc:
+        job.status = GenerationJobStatus.FAILED
+        job.error_message = "The quiz generation worker could not be reached."
+        db.commit()
+        raise HTTPException(status_code=503, detail=job.error_message) from exc
+
+    return GenerationJobRead.model_validate(job)
+
+
+@router.get("/generation-jobs", response_model=list[GenerationJobRead])
+def list_generation_jobs(
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> list[GenerationJobRead]:
+    from sqlalchemy import select
+    from app.models.generation_job import GenerationJob
+
+    jobs = db.scalars(
+        select(GenerationJob)
+        .where(GenerationJob.user_id == current_user.id)
+        .order_by(GenerationJob.created_at.desc())
+    ).all()
+    return [GenerationJobRead.model_validate(job) for job in jobs]
+
+
+@router.get("/generation-jobs/{job_id}", response_model=GenerationJobRead)
+def get_generation_job(
+    job_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> GenerationJobRead:
+    from app.models.generation_job import GenerationJob
+    from app.core.exceptions import NotFoundError
+
+    job = db.get(GenerationJob, job_id)
+    if not job or job.user_id != current_user.id:
+        raise NotFoundError("Generation job not found.")
+    return GenerationJobRead.model_validate(job)
 
 
 @router.get("", response_model=list[QuizRead])
