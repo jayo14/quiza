@@ -64,3 +64,14 @@ def test_forgot_password_does_not_reveal_whether_email_exists(client):
     response = client.post("/api/v1/auth/forgot-password", json={"email": "nobody@example.com"})
     assert response.status_code == 200
     assert "reset link has been sent" in response.json()["message"]
+
+
+def test_error_responses_include_cors_headers(client):
+    response = client.post(
+        "/api/v1/auth/signin",
+        json={"email": "notfound@example.com", "password": "wrongpassword"},
+        headers={"Origin": "http://localhost:5173"},
+    )
+    assert response.status_code == 401
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
+
