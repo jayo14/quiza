@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Upload, X } from "lucide-react";
+import { Loader2, Sparkles, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   deleteMaterial,
@@ -199,6 +199,8 @@ function UploadMaterial() {
   }
 
   const generating = job && ["queued", "processing"].includes(job.status);
+  const isAnyUploading = fileList.some((item) => item.status === "uploading");
+  const targetMaterialIds = availableMaterialIds.filter((id) => selectedIds.has(id));
   const stageLabel = job?.current_stage
     ?.replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -279,21 +281,126 @@ function UploadMaterial() {
         </div>
       )}
 
-      <div className="upload-material__actions">
-        <label>
-          Questions
-          <input
-            type="number"
-            min="1"
-            max="50"
-            value={numQuestions}
-            onChange={(event) => setNumQuestions(Number(event.target.value))}
-            disabled={generating}
-          />
-        </label>
-        <button type="button" onClick={handleGenerate} disabled={generating || fileList.some((item) => item.status === "uploading")}>
-          {generating ? <><Loader2 size={16} className="upload-material__spin" /> Generating...</> : "Generate Quiz"}
-        </button>
+      <div className="upload-material__config-card">
+        <div className="upload-material__config-header">
+          <div className="upload-material__config-title-wrap">
+            <div className="upload-material__config-icon">
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <h3>Configure Quiz</h3>
+              <p>Set question volume, difficulty, and generate from selected materials.</p>
+            </div>
+          </div>
+          <div className="upload-material__selection-badge">
+            <span className="upload-material__badge-count">{targetMaterialIds.length}</span>
+            <span>materials selected</span>
+          </div>
+        </div>
+
+        <div className="upload-material__config-body">
+          <div className="upload-material__config-field">
+            <div className="upload-material__field-header">
+              <label htmlFor="question-count-input" className="upload-material__field-label">
+                Questions
+              </label>
+              <span className="upload-material__field-hint">1 to 50 questions</span>
+            </div>
+            <div className="upload-material__presets-row">
+              {[5, 10, 15, 20].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className={`upload-material__preset-chip ${numQuestions === preset ? "upload-material__preset-chip--active" : ""}`}
+                  onClick={() => setNumQuestions(preset)}
+                  disabled={generating}
+                >
+                  {preset}
+                </button>
+              ))}
+              <div className="upload-material__custom-input-wrap">
+                <input
+                  id="question-count-input"
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={numQuestions}
+                  onChange={(event) => {
+                    const val = parseInt(event.target.value, 10);
+                    if (!isNaN(val)) {
+                      setNumQuestions(Math.max(1, Math.min(50, val)));
+                    } else {
+                      setNumQuestions("");
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!numQuestions || numQuestions < 1) setNumQuestions(10);
+                  }}
+                  className="upload-material__number-input"
+                  disabled={generating}
+                  placeholder="Custom"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="upload-material__config-field">
+            <div className="upload-material__field-header">
+              <label className="upload-material__field-label">Difficulty</label>
+              <span className="upload-material__field-hint">Target knowledge depth</span>
+            </div>
+            <div className="upload-material__difficulty-row">
+              {[
+                { id: "easy", label: "Easy", desc: "Foundational concepts" },
+                { id: "medium", label: "Medium", desc: "Comprehensive review" },
+                { id: "hard", label: "Hard", desc: "Advanced application" },
+              ].map((lvl) => (
+                <button
+                  key={lvl.id}
+                  type="button"
+                  className={`upload-material__diff-chip ${difficulty === lvl.id ? "upload-material__diff-chip--active" : ""}`}
+                  onClick={() => setDifficulty(lvl.id)}
+                  disabled={generating}
+                >
+                  <span className="upload-material__diff-label">{lvl.label}</span>
+                  <span className="upload-material__diff-desc">{lvl.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="upload-material__config-footer">
+          <div className="upload-material__footer-info">
+            {targetMaterialIds.length === 0 ? (
+              <span className="upload-material__footer-hint upload-material__footer-hint--warn">
+                Upload or select at least 1 study material above to enable quiz generation.
+              </span>
+            ) : (
+              <span className="upload-material__footer-hint">
+                Ready to generate {numQuestions || 10} questions from {targetMaterialIds.length} material{targetMaterialIds.length > 1 ? "s" : ""}.
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            className="upload-material__generate-btn"
+            onClick={handleGenerate}
+            disabled={generating || isAnyUploading || targetMaterialIds.length === 0}
+          >
+            {generating ? (
+              <>
+                <Loader2 size={18} className="upload-material__spin" />
+                <span>Generating Quiz...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles size={18} />
+                <span>Generate Quiz</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {job && (
