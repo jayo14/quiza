@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { RotateCcw } from "lucide-react";
 import { getAttempt, getAttemptSummary } from "../services/apiClient";
 import "./Summary.css";
 
@@ -99,6 +100,17 @@ function Summary() {
         >
           Review Answers
         </button>
+
+        {attemptData?.quiz_id && (
+          <button
+            type="button"
+            className="summary__retake"
+            onClick={() => navigate(`/quiz?id=${attemptData.quiz_id}`)}
+          >
+            <RotateCcw size={16} />
+            <span>Retake Quiz</span>
+          </button>
+        )}
 
         <button className="summary__back" onClick={() => navigate("/quizzes")}>
           Back to Quizzes
