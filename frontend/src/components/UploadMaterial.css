@@ -107,6 +107,13 @@
   background-color: var(--bg-card);
   border: 1px dashed var(--border-color);
   border-radius: var(--radius-lg);
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.upload-material__box--dragging {
+  border-color: var(--primary) !important;
+  background-color: rgba(124, 106, 255, 0.08) !important;
+  transform: scale(1.008);
 }
 
 .upload-material__icon {

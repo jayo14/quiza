@@ -93,9 +93,10 @@ function UploadMaterial() {
     };
   }, [pollJob]);
 
-  const handleFileChange = (event) => {
-    const selected = Array.from(event.target.files);
-    event.target.value = "";
+  const [isDragging, setIsDragging] = useState(false);
+
+  const processFiles = (files) => {
+    const selected = Array.from(files);
     selected.forEach(async (file) => {
       const itemId = `${file.name}-${Date.now()}-${Math.random()}`;
       if (file.size > 20 * 1024 * 1024) {
@@ -133,6 +134,29 @@ function UploadMaterial() {
         ));
       }
     });
+  };
+
+  const handleFileChange = (event) => {
+    processFiles(event.target.files);
+    event.target.value = "";
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFiles(e.dataTransfer.files);
+    }
   };
 
   const removeMaterial = async (item) => {
@@ -218,15 +242,25 @@ function UploadMaterial() {
         <p>Upload materials now. They are processed only when you generate a quiz.</p>
       </div>
 
-      <div className="upload-material__box">
+      <div
+        className={`upload-material__box ${isDragging ? "upload-material__box--dragging" : ""}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <div className="upload-material__icon"><Upload size={24} /></div>
         <h2>Upload your study material</h2>
-        <p>Choose one or more PDF, DOCX, or TXT files.</p>
+        <p>Drag and drop files here, or browse your device (PDF, DOC, DOCX, TXT, or images).</p>
         <label className="upload-material__button">
           Choose Files
-          <input type="file" accept=".pdf,.docx,.txt" multiple onChange={handleFileChange} />
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
+            multiple
+            onChange={handleFileChange}
+          />
         </label>
-        <span className="upload-material__formats">Maximum 20 MB per file</span>
+        <span className="upload-material__formats">Maximum 20 MB per file · Multiple files supported</span>
       </div>
 
       {error && <p className="upload-material__error">{error}</p>}
