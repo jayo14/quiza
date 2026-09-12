@@ -149,3 +149,52 @@ def test_generate_quiz_task_execution_end_to_end(client, signup):
     )
     assert repeat_res["status"] == "already_completed"
     assert repeat_res["quiz_id"] == quiz_id
+
+
+def test_retry_generation_job(client, signup):
+    headers, user_body = signup(email="retry-job@example.com")
+    mat = _upload(client, headers, "retry_mat.txt").json()
+
+    with patch(
+        "app.tasks.generate_quiz_task.delay",
+        return_value=SimpleNamespace(id="celery-task-retry"),
+    ):
+        post_job = client.post(
+            "/api/v1/quizzes/generate-background",
+            json={
+                "material_ids": [mat["id"]],
+                "question_count": 5,
+                "difficulty": "easy",
+                "question_types": ["multiple_choice"],
+            },
+            headers=headers,
+        )
+    assert post_job.status_code == 202
+    job_id = post_job.json()["id"]
+
+    # Mark the job as failed
+    from app.db.session import SessionLocal
+    from app.models.generation_job import GenerationJob
+    from app.models.enums import GenerationJobStatus
+
+    db = SessionLocal()
+    db_job = db.get(GenerationJob, job_id)
+    db_job.status = GenerationJobStatus.FAILED
+    db_job.error_message = "Generation timed out. Please try again."
+    db.commit()
+    db.close()
+
+    with patch(
+        "app.tasks.generate_quiz_task.delay",
+        return_value=SimpleNamespace(id="celery-task-retried"),
+    ) as mock_delay:
+        retry_resp = client.post(
+            f"/api/v1/quizzes/generation-jobs/{job_id}/retry",
+            headers=headers,
+        )
+        assert retry_resp.status_code == 202
+        retried = retry_resp.json()
+        assert retried["id"] == job_id
+        assert retried["status"] == "queued"
+        assert retried["progress"] == 0
+        mock_delay.assert_called_once()
