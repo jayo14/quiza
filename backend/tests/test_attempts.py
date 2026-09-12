@@ -59,7 +59,7 @@ def test_submit_attempt_scores_correctly(client, signup):
     assert body["topic_performance"][0]["topic"] == "Photosynthesis"
 
 
-def test_cannot_submit_the_same_attempt_twice(client, signup):
+def test_submitting_the_same_attempt_twice_is_idempotent(client, signup):
     headers, _ = signup()
     quiz_id, question_ids = _setup_ready_quiz(client, headers, count=2)
     attempt = client.post(f"/api/v1/quizzes/{quiz_id}/attempts", headers=headers).json()
@@ -67,9 +67,12 @@ def test_cannot_submit_the_same_attempt_twice(client, signup):
     answers = [{"question_id": qid, "selected_answer": "True"} for qid in question_ids]
     first = client.post(f"/api/v1/attempts/{attempt['id']}/submit", json={"answers": answers}, headers=headers)
     assert first.status_code == 200
+    assert first.json()["status"] == "completed"
 
     second = client.post(f"/api/v1/attempts/{attempt['id']}/submit", json={"answers": answers}, headers=headers)
-    assert second.status_code == 422
+    assert second.status_code == 200
+    assert second.json()["status"] == "completed"
+    assert second.json()["id"] == attempt["id"]
 
 
 def test_unanswered_questions_are_marked_incorrect(client, signup):
