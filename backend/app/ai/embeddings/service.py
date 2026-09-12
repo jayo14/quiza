@@ -1,5 +1,6 @@
-import asyncio
 import logging
+import random
+import asyncio
 import re
 import time
 
@@ -69,31 +70,25 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
         return dims
 
     async def _embed_batch(self, texts: list[str]) -> list[list[float]]:
-        """Embed a single batch of texts concurrently (up to 5 at a time)."""
-        sem = asyncio.Semaphore(5)
-
-        async def _embed_one(text: str) -> list[float]:
-            async with sem:
-                response = await self._client.aio.models.embed_content(
-                    model=self._model,
-                    contents=text,
+        """Send one provider request for a bounded batch of documents."""
+        response = await self._client.aio.models.embed_content(
+            model=self._model,
+            contents=texts,
+        )
+        raw_embeddings = getattr(response, "embeddings", None)
+        if raw_embeddings is None and getattr(response, "embedding", None) is not None:
+            raw_embeddings = [response.embedding]
+        values = [list(item.values) for item in (raw_embeddings or []) if getattr(item, "values", None)]
+        if len(values) != len(texts):
+            raise AIServiceError(
+                f"The AI provider returned {len(values)} embeddings for {len(texts)} documents."
+            )
+        for embedding in values:
+            if len(embedding) != self.dimensions:
+                raise AIServiceError(
+                    f"Embedding dimension mismatch: expected {self.dimensions}, got {len(embedding)}"
                 )
-                values = None
-                if hasattr(response, "embedding") and response.embedding and getattr(response.embedding, "values", None):
-                    values = response.embedding.values
-                elif hasattr(response, "embeddings") and response.embeddings and len(response.embeddings) > 0:
-                    values = response.embeddings[0].values
-
-                if values:
-                    result = list(values)
-                    if len(result) != self.dimensions:
-                        raise AIServiceError(
-                            f"Embedding dimension mismatch: expected {self.dimensions}, got {len(result)}"
-                        )
-                    return result
-                raise AIServiceError("The AI provider returned empty embeddings.")
-
-        return await asyncio.gather(*[_embed_one(text) for text in texts])
+        return values
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
@@ -130,7 +125,7 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
                             batch_num, total_batches, attempt + 1, max_retries, wait,
                         )
                         if attempt < max_retries - 1:
-                            await asyncio.sleep(wait)
+                            await asyncio.sleep(wait + random.uniform(0, min(1.0, wait * 0.1)))
                             continue
                     raise AIServiceError(f"The AI provider returned an error: {exc}") from exc
                 except Exception as exc:

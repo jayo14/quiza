@@ -16,6 +16,12 @@ class EmbeddingProvider(ABC):
         """Embed a batch of texts, returning one vector per input in the same order."""
         raise NotImplementedError
 
+    async def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return await self.embed(texts)
+
+    async def embed_query(self, text: str) -> list[float]:
+        return await self.embed_one(text)
+
     def validate_dimensions(self, embedding: list[float]) -> None:
         if len(embedding) != self.dimensions:
             raise ValueError(

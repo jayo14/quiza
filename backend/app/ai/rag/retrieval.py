@@ -21,7 +21,7 @@ async def retrieve_relevant_chunks(
     another student's material."""
 
     provider = embedding_provider or get_embedding_provider()
-    query_embedding = await provider.embed_one(query)
+    query_embedding = await provider.embed_query(query)
 
     vector_store = get_vector_store(db)
     results = vector_store.search(

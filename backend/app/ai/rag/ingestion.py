@@ -55,7 +55,7 @@ async def ingest_material(
         db.add_all(chunk_rows)
         db.flush()  # assign ids without committing yet
 
-        embeddings = await provider.embed([row.content for row in chunk_rows])
+        embeddings = await provider.embed_documents([row.content for row in chunk_rows])
 
         vector_store = get_vector_store(db)
         vector_store.add_many(
