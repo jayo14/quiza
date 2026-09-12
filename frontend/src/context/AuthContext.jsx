@@ -126,21 +126,34 @@ export function AuthProvider({ children }) {
   };
 
   const signIn = async (email, password) => {
-    const response = await fetch(`${API_BASE_URL}/auth/signin`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    });
+    let response;
+    try {
+      response = await fetch(`${API_BASE_URL}/auth/signin`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+    } catch (err) {
+      throw new Error("Unable to reach server. Please check your network or try again shortly.");
+    }
 
-    const data = await response.json();
+    let data = null;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
 
     if (!response.ok) {
       const errorMsg =
-        typeof data.detail === "string"
+        typeof data?.detail === "string"
           ? data.detail
-          : data.detail?.[0]?.msg || "Sign in failed";
+          : data?.detail?.[0]?.msg ||
+            (response.status === 503
+              ? "Database service is temporarily unavailable. Please try again shortly."
+              : "Sign in failed");
       throw new Error(errorMsg);
     }
 
@@ -149,21 +162,34 @@ export function AuthProvider({ children }) {
   };
 
   const signUp = async (name, email, password) => {
-    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name, email, password }),
-    });
+    let response;
+    try {
+      response = await fetch(`${API_BASE_URL}/auth/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password }),
+      });
+    } catch (err) {
+      throw new Error("Unable to reach server. Please check your network or try again shortly.");
+    }
 
-    const data = await response.json();
+    let data = null;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
 
     if (!response.ok) {
       const errorMsg =
-        typeof data.detail === "string"
+        typeof data?.detail === "string"
           ? data.detail
-          : data.detail?.[0]?.msg || "Sign up failed";
+          : data?.detail?.[0]?.msg ||
+            (response.status === 503
+              ? "Database service is temporarily unavailable. Please try again shortly."
+              : "Sign up failed");
       throw new Error(errorMsg);
     }
 
