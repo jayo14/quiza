@@ -815,10 +815,20 @@ function UploadMaterial() {
             <button
               type="button"
               className="upload-material__start-btn"
-              onClick={() => navigate(`/quiz?id=${job.quiz_id}`)}
+              onClick={() => handleStartQuizFromJob(job.quiz_id)}
+              disabled={isStartingQuiz}
             >
-              <span>Start Quiz</span>
-              <ArrowRight size={16} />
+              {isStartingQuiz ? (
+                <>
+                  <Loader2 size={16} className="upload-material__spin" />
+                  <span>Starting Quiz...</span>
+                </>
+              ) : (
+                <>
+                  <span>Start Quiz</span>
+                  <ArrowRight size={16} />
+                </>
+              )}
             </button>
           )}
           {job.status === "failed" && (

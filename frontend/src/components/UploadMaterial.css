@@ -1255,9 +1255,15 @@
   transition: all 0.2s ease;
 }
 
-.upload-material__start-btn:hover {
+.upload-material__start-btn:hover:not(:disabled) {
   background: var(--primary-hover);
   transform: translateY(-1px);
+}
+
+.upload-material__start-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .upload-material__job-failed-actions {
