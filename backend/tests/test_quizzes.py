@@ -89,3 +89,29 @@ def test_list_and_delete_quiz(client, signup):
     delete = client.delete(f"/api/v1/quizzes/{quiz_id}", headers=headers)
     assert delete.status_code == 204
     assert client.get(f"/api/v1/quizzes/{quiz_id}", headers=headers).status_code == 404
+
+
+def test_list_quizzes_excludes_failed_quizzes(client, signup):
+    from app.db.session import SessionLocal
+    from app.models.quiz import Quiz
+    from app.models.enums import QuizStatus
+
+    headers, _ = signup()
+    material_id = _upload_ready_material(client, headers)
+    generated = generate_quiz_with_fakes(
+        client, headers, material_id=material_id, questions=true_false_questions("Topic", 2)
+    )
+    quiz_id = generated.json()["id"]
+
+    # Mark the quiz as FAILED directly in DB
+    db = SessionLocal()
+    quiz = db.get(Quiz, quiz_id)
+    quiz.status = QuizStatus.FAILED
+    db.commit()
+    db.close()
+
+    # When listing quizzes, failed quizzes should not be returned
+    response = client.get("/api/v1/quizzes", headers=headers)
+    assert response.status_code == 200
+    assert len(response.json()) == 0
+
