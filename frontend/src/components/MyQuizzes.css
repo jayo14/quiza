@@ -225,9 +225,24 @@
   transition: all 0.2s ease;
 }
 
-.my-quiz__start-btn:hover {
+.my-quiz__start-btn:hover:not(:disabled) {
   background: var(--primary-hover);
   transform: translateY(-1px);
+}
+
+.my-quiz__start-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.my-quiz__spin {
+  animation: myQuizSpin 1s linear infinite;
+}
+
+@keyframes myQuizSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Tablet */

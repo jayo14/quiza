@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, HelpCircle, Play, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Clock, HelpCircle, Loader2, Play, Plus, Sparkles, Trash2 } from "lucide-react";
 import { listQuizzes, deleteQuiz, startAttempt } from "../services/apiClient";
 import "./MyQuizzes.css";
 
@@ -20,6 +20,7 @@ function MyQuizzes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [quizToDelete, setQuizToDelete] = useState(null);
+  const [startingQuizId, setStartingQuizId] = useState(null);
 
   const fetchQuizzes = async () => {
     try {
@@ -62,10 +63,13 @@ function MyQuizzes() {
 
   const handleStartAttempt = async (quizId) => {
     try {
+      setStartingQuizId(quizId);
       const attempt = await startAttempt(quizId);
       navigate(`/quiz?id=${quizId}&attempt_id=${attempt.id}`);
     } catch {
       navigate(`/quiz?id=${quizId}`);
+    } finally {
+      setStartingQuizId(null);
     }
   };
 
@@ -153,9 +157,19 @@ function MyQuizzes() {
                     type="button"
                     className="my-quiz__start-btn"
                     onClick={() => handleStartAttempt(quiz.id)}
+                    disabled={startingQuizId === quiz.id}
                   >
-                    <Play size={15} />
-                    <span>Start Quiz</span>
+                    {startingQuizId === quiz.id ? (
+                      <>
+                        <Loader2 size={15} className="my-quiz__spin" />
+                        <span>Starting Quiz...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play size={15} />
+                        <span>Start Quiz</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
