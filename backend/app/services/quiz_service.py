@@ -113,7 +113,7 @@ def list_quizzes(db: Session, *, user: User) -> list[Quiz]:
     stmt = (
         select(Quiz)
         .options(selectinload(Quiz.questions))
-        .where(Quiz.user_id == user.id)
+        .where(Quiz.user_id == user.id, Quiz.status != QuizStatus.FAILED)
         .order_by(Quiz.created_at.desc())
     )
     return list(db.scalars(stmt).all())
