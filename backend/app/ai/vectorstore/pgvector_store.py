@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.ai.vectorstore.base import EmbeddingRecord, SearchResult, VectorStore
 
-EMBEDDING_DIMENSION = 768
+EMBEDDING_DIMENSION = 3072
 
 
 class PgVectorStore(VectorStore):
