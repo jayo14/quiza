@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Any
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import Difficulty, GenerationJobStatus, QuestionType, QuizStatus
 
@@ -59,13 +60,22 @@ class QuizRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    @computed_field
-    @property
-    def question_count(self) -> int:
-        questions = getattr(self, "questions", None)
-        if questions is not None and len(questions) > 0:
-            return len(questions)
-        return self.number_of_questions
+    question_count: int = 0
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_question_count(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if ("question_count" not in data or not data["question_count"]) and data.get("questions"):
+                data["question_count"] = len(data["questions"])
+        elif hasattr(data, "questions") and getattr(data, "question_count", None) in (None, 0):
+            try:
+                qs = data.questions
+                if qs:
+                    setattr(data, "question_count", len(qs))
+            except Exception:
+                pass
+        return data
 
 
 class QuizDetail(QuizRead):
