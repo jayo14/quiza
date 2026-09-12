@@ -42,7 +42,7 @@ function UploadMaterial() {
   const [job, setJob] = useState(null);
   const [restoring, setRestoring] = useState(true);
 
-  const pollJob = useCallback(async (jobId) => {
+  const pollJob = useCallback(async function pollGenerationJob(jobId) {
     try {
       const current = await getGenerationJob(jobId);
       setJob(current);
@@ -55,10 +55,10 @@ function UploadMaterial() {
         toast.error(current.error_message || "Quiz generation failed.");
         return;
       }
-      poller.current = setTimeout(() => pollJob(jobId), POLL_INTERVAL);
+      poller.current = setTimeout(() => pollGenerationJob(jobId), POLL_INTERVAL);
     } catch (err) {
       setError(err.message || "Unable to check quiz generation status.");
-      poller.current = setTimeout(() => pollJob(jobId), POLL_INTERVAL * 2);
+      poller.current = setTimeout(() => pollGenerationJob(jobId), POLL_INTERVAL * 2);
     }
   }, [navigate]);
 
