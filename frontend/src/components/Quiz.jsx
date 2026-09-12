@@ -8,6 +8,7 @@ import {
   listQuizzes,
   startAttempt,
   submitAttempt,
+  getAttempt,
 } from "../services/apiClient";
 import "./Quiz.css";
 
@@ -54,9 +55,23 @@ function Quiz() {
         setQuestions(qList || []);
 
         let currentAttemptId = attemptIdParam;
+        if (currentAttemptId) {
+          try {
+            const attemptInfo = await getAttempt(currentAttemptId);
+            if (attemptInfo && attemptInfo.status === "completed") {
+              currentAttemptId = null;
+            }
+          } catch {
+            currentAttemptId = null;
+          }
+        }
+
         if (!currentAttemptId) {
           const attempt = await startAttempt(targetQuizId);
           currentAttemptId = attempt.id;
+          navigate(`/quiz?id=${targetQuizId}&attempt_id=${currentAttemptId}`, {
+            replace: true,
+          });
         }
         setAttemptId(currentAttemptId);
       } catch (err) {
