@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, HelpCircle, Loader2, Play, Plus, Sparkles, Trash2 } from "lucide-react";
-import { listQuizzes, deleteQuiz, startAttempt } from "../services/apiClient";
+import { Clock, HelpCircle, Loader2, Play, Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import { listQuizzes, deleteQuiz, startAttempt, listAttempts } from "../services/apiClient";
 import "./MyQuizzes.css";
 
 const formatDate = (dateStr) => {
@@ -17,6 +17,7 @@ const formatDate = (dateStr) => {
 function MyQuizzes() {
   const navigate = useNavigate();
   const [quizzes, setQuizzes] = useState([]);
+  const [attempts, setAttempts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [quizToDelete, setQuizToDelete] = useState(null);
@@ -25,13 +26,17 @@ function MyQuizzes() {
   const fetchQuizzes = async () => {
     try {
       setLoading(true);
-      const data = await listQuizzes();
+      const [data, attemptsData] = await Promise.all([
+        listQuizzes(),
+        listAttempts().catch(() => []),
+      ]);
       const validQuizzes = (data || []).filter((quiz) => {
         const status = (quiz.status || "").toLowerCase();
         const qCount = quiz.question_count || quiz.questions?.length || quiz.number_of_questions || 0;
         return status !== "failed" && status !== "generating" && qCount > 0;
       });
       setQuizzes(validQuizzes);
+      setAttempts(attemptsData || []);
     } catch (err) {
       console.error("Failed to list quizzes:", err);
       setError(err.message || "Failed to load quizzes");
@@ -109,6 +114,13 @@ function MyQuizzes() {
           {visibleQuizzes.map((quiz) => {
             const diff = (quiz.difficulty || "medium").toLowerCase();
             const questionCount = quiz.question_count || quiz.questions?.length || quiz.number_of_questions || 0;
+            const quizAttempts = attempts.filter((a) => a.quiz_id === quiz.id);
+            const completedAttempts = quizAttempts.filter((a) => a.status === "completed");
+            const attemptCount = completedAttempts.length;
+            const bestAccuracy =
+              completedAttempts.length > 0
+                ? Math.max(...completedAttempts.map((a) => Math.round((a.accuracy ?? 0) * 100)))
+                : null;
 
             return (
               <div className="my-quiz" key={quiz.id}>
@@ -143,6 +155,20 @@ function MyQuizzes() {
                       <HelpCircle size={13} />
                       {questionCount} Questions
                     </span>
+                    <span className="my-quiz__meta-pill">
+                      {attemptCount > 0 ? (
+                        <>
+                          <RotateCcw size={12} />
+                          {attemptCount} {attemptCount === 1 ? "attempt" : "attempts"}
+                          {bestAccuracy !== null && ` · Best: ${bestAccuracy}%`}
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={12} />
+                          Not attempted
+                        </>
+                      )}
+                    </span>
                     {quiz.created_at && (
                       <span className="my-quiz__meta-date">
                         <Clock size={12} />
@@ -162,7 +188,12 @@ function MyQuizzes() {
                     {startingQuizId === quiz.id ? (
                       <>
                         <Loader2 size={15} className="my-quiz__spin" />
-                        <span>Starting Quiz...</span>
+                        <span>Starting...</span>
+                      </>
+                    ) : attemptCount > 0 ? (
+                      <>
+                        <RotateCcw size={15} />
+                        <span>Retake Quiz</span>
                       </>
                     ) : (
                       <>
