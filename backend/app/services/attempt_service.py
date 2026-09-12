@@ -24,15 +24,16 @@ def start_attempt(db: Session, *, user: User, quiz_id: str) -> QuizAttempt:
     if quiz.status not in (QuizStatus.READY,):
         raise ValidationFailedError("This quiz isn't ready to be attempted yet.")
 
-    existing = db.execute(
+    existing = db.scalars(
         select(QuizAttempt)
         .where(
             QuizAttempt.quiz_id == quiz_id,
             QuizAttempt.user_id == user.id,
             QuizAttempt.status == AttemptStatus.IN_PROGRESS,
         )
+        .order_by(QuizAttempt.started_at.desc())
         .with_for_update()
-    ).scalar_one_or_none()
+    ).first()
 
     if existing:
         return existing
