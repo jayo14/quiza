@@ -23,6 +23,8 @@ import {
   getGenerationJob,
   listGenerationJobs,
   listMaterials,
+  retryGenerationJob,
+  startAttempt,
   uploadMaterial,
 } from "../services/apiClient";
 import "./UploadMaterial.css";
@@ -166,6 +168,8 @@ function UploadMaterial() {
   const [isDragging, setIsDragging] = useState(false);
   const [materialToDelete, setMaterialToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRetryingJob, setIsRetryingJob] = useState(false);
+  const [isStartingQuiz, setIsStartingQuiz] = useState(false);
 
   const pollJob = useCallback(async function pollGenerationJob(jobId) {
     try {
@@ -388,6 +392,56 @@ function UploadMaterial() {
       pollJob(created.id);
     } catch (err) {
       setError(err.message || "Unable to start quiz generation.");
+    }
+  };
+
+  const handleRetryJob = async () => {
+    if (!job || isRetryingJob) return;
+    setIsRetryingJob(true);
+    setError("");
+    try {
+      let retriedJob;
+      try {
+        retriedJob = await retryGenerationJob(job.id);
+      } catch {
+        // Fallback to background generation using existing job parameters or current selection
+        let fallbackMaterialIds = job.material_ids?.length
+          ? job.material_ids
+          : availableMaterialIds.filter((id) => selectedIds.has(id));
+        if (!fallbackMaterialIds?.length) {
+          fallbackMaterialIds = availableMaterialIds.length ? availableMaterialIds : Array.from(selectedIds);
+        }
+        if (!fallbackMaterialIds?.length) {
+          throw new Error("No study materials found to retry generation.");
+        }
+        retriedJob = await generateQuizBackground({
+          material_ids: fallbackMaterialIds,
+          question_count: job.question_count || numQuestions || 10,
+          difficulty: job.difficulty || difficulty || "medium",
+          question_types: job.question_types || ["multiple_choice", "true_false"],
+        });
+      }
+      setJob(retriedJob);
+      toast.info("Quiz generation restarted.");
+      pollJob(retriedJob.id);
+    } catch (err) {
+      console.error("Retry failed:", err);
+      setError(err.message || "Failed to retry quiz generation.");
+      toast.error(err.message || "Unable to retry quiz generation.");
+    } finally {
+      setIsRetryingJob(false);
+    }
+  };
+
+  const handleStartQuizFromJob = async (quizId) => {
+    try {
+      setIsStartingQuiz(true);
+      const attempt = await startAttempt(quizId);
+      navigate(`/quiz?id=${quizId}&attempt_id=${attempt.id}`);
+    } catch {
+      navigate(`/quiz?id=${quizId}`);
+    } finally {
+      setIsStartingQuiz(false);
     }
   };
 
