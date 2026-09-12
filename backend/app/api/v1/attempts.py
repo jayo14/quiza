@@ -26,13 +26,17 @@ def submit_attempt(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AttemptResult:
+    existing_attempt = db.get(attempt_service.QuizAttempt, attempt_id)
+    already_completed = existing_attempt is not None and existing_attempt.status == attempt_service.AttemptStatus.COMPLETED
+
     attempt = attempt_service.submit_attempt(
         db, user=current_user, attempt_id=attempt_id, submissions=payload.answers
     )
     # Scoring, topic performance, and deterministic weakness detection are already
     # done synchronously above. The LLM-driven per-mistake diagnosis is comparatively
     # slow and not needed for the immediate result screen, so it runs after response.
-    background_tasks.add_task(analyze_attempt_mistakes, attempt.id)
+    if not already_completed:
+        background_tasks.add_task(analyze_attempt_mistakes, attempt.id)
     return _to_result(db, attempt)
 
 
