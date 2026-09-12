@@ -1,6 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Loader2, RotateCcw, Sparkles, Upload, X } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  FileCode,
+  FileImage,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  RotateCcw,
+  Sparkles,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   deleteMaterial,
@@ -15,21 +30,126 @@ import "./UploadMaterial.css";
 const POLL_INTERVAL = 2500;
 
 const fmtBytes = (bytes) => {
+  if (!bytes || isNaN(bytes)) return "0 B";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1048576).toFixed(1)} MB`;
 };
+
+function getFileTypeInfo(filename = "", fileType = "") {
+  const ext = (filename.split(".").pop() || "").toLowerCase();
+  const type = (fileType || "").toLowerCase();
+
+  if (ext === "pdf" || type.includes("pdf")) {
+    return {
+      category: "pdf",
+      label: "PDF",
+      badgeClass: "file-type-logo--pdf",
+      icon: "pdf",
+    };
+  }
+
+  if (
+    ["doc", "docx"].includes(ext) ||
+    type.includes("word") ||
+    type.includes("officedocument.wordprocessingml")
+  ) {
+    return {
+      category: "doc",
+      label: ext.toUpperCase() || "DOC",
+      badgeClass: "file-type-logo--doc",
+      icon: "doc",
+    };
+  }
+
+  if (["txt", "text", "md", "rtf"].includes(ext) || type.includes("text/plain")) {
+    return {
+      category: "txt",
+      label: ext.toUpperCase() || "TXT",
+      badgeClass: "file-type-logo--txt",
+      icon: "txt",
+    };
+  }
+
+  if (
+    ["png", "jpg", "jpeg", "webp", "svg", "gif"].includes(ext) ||
+    type.startsWith("image/")
+  ) {
+    return {
+      category: "image",
+      label: ext.toUpperCase() || "IMG",
+      badgeClass: "file-type-logo--image",
+      icon: "image",
+    };
+  }
+
+  if (
+    ["ppt", "pptx"].includes(ext) ||
+    type.includes("presentation") ||
+    type.includes("powerpoint")
+  ) {
+    return {
+      category: "ppt",
+      label: ext.toUpperCase() || "PPT",
+      badgeClass: "file-type-logo--ppt",
+      icon: "ppt",
+    };
+  }
+
+  if (
+    ["xls", "xlsx", "csv"].includes(ext) ||
+    type.includes("spreadsheet") ||
+    type.includes("excel") ||
+    type.includes("csv")
+  ) {
+    return {
+      category: "sheet",
+      label: ext.toUpperCase() || "XLS",
+      badgeClass: "file-type-logo--sheet",
+      icon: "sheet",
+    };
+  }
+
+  return {
+    category: "default",
+    label: (ext || "FILE").toUpperCase().slice(0, 4),
+    badgeClass: "file-type-logo--default",
+    icon: "default",
+  };
+}
+
+function FileTypeLogo({ filename, fileType }) {
+  const info = getFileTypeInfo(filename, fileType);
+  const IconComponent =
+    info.icon === "image"
+      ? FileImage
+      : info.icon === "sheet"
+      ? FileSpreadsheet
+      : info.icon === "txt"
+      ? FileCode
+      : FileText;
+
+  return (
+    <div className={`file-type-logo ${info.badgeClass}`} title={`${info.label} file`}>
+      <div className="file-type-logo__icon-box">
+        <IconComponent size={18} className="file-type-logo__icon" />
+      </div>
+      <span className="file-type-logo__badge">{info.label}</span>
+    </div>
+  );
+}
 
 function materialToItem(material) {
   return {
     id: `mat-${material.id}`,
     rawFile: null,
     name: material.filename,
+    fileType: material.file_type,
     sizeLabel: fmtBytes(material.file_size),
     progress: 100,
-    status: material.status === "failed" ? "error" : "uploaded",
+    status: "uploaded",
     materialId: material.id,
-    error: material.processing_error || null,
+    error: null,
   };
 }
 
@@ -43,6 +163,9 @@ function UploadMaterial() {
   const [numQuestions, setNumQuestions] = useState(10);
   const [job, setJob] = useState(null);
   const [restoring, setRestoring] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const [materialToDelete, setMaterialToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const pollJob = useCallback(async function pollGenerationJob(jobId) {
     try {
@@ -93,20 +216,51 @@ function UploadMaterial() {
     };
   }, [pollJob]);
 
-  const [isDragging, setIsDragging] = useState(false);
+  const sliderRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollButtons = useCallback(() => {
+    const el = sliderRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 6);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 6);
+  }, []);
+
+  useEffect(() => {
+    const el = sliderRef.current;
+    if (!el) return;
+    updateScrollButtons();
+    const handleScroll = () => updateScrollButtons();
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+    return () => {
+      el.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [fileList.length, updateScrollButtons]);
+
+  const scrollSlider = (direction) => {
+    const el = sliderRef.current;
+    if (!el) return;
+    const scrollAmount = direction === "left" ? -280 : 280;
+    el.scrollBy({ left: scrollAmount, behavior: "smooth" });
+  };
 
   const processFiles = (files) => {
     const selected = Array.from(files);
     selected.forEach(async (file) => {
       const itemId = `${file.name}-${Date.now()}-${Math.random()}`;
       if (file.size > 20 * 1024 * 1024) {
-        setError(`${file.name} is larger than 20 MB.`);
+        toast.error(`${file.name} is larger than 20 MB.`);
         return;
       }
       setFileList((items) => [...items, {
         id: itemId,
         rawFile: file,
         name: file.name,
+        fileType: file.type || file.name.split(".").pop(),
         sizeLabel: fmtBytes(file.size),
         progress: 0,
         status: "uploading",
@@ -122,16 +276,25 @@ function UploadMaterial() {
         const material = await request.promise;
         setFileList((items) => items.map((item) =>
           item.id === itemId
-            ? { ...item, status: "uploaded", progress: 100, materialId: material.id, rawFile: null }
+            ? {
+                ...item,
+                status: "uploaded",
+                progress: 100,
+                materialId: material.id,
+                fileType: material.file_type || item.fileType,
+                rawFile: null,
+                error: null,
+              }
             : item
         ));
         if (material?.id) {
           setSelectedIds((prev) => new Set([...prev, material.id]));
         }
+        toast.success(`Uploaded "${file.name}" successfully.`);
       } catch (err) {
-        setFileList((items) => items.map((item) =>
-          item.id === itemId ? { ...item, status: "error", error: err.message } : item
-        ));
+        // Failed resource upload (just upload) shouldn't be shown
+        setFileList((items) => items.filter((item) => item.id !== itemId));
+        toast.error(err.message || `Failed to upload "${file.name}".`);
       }
     });
   };
@@ -159,16 +322,26 @@ function UploadMaterial() {
     }
   };
 
-  const removeMaterial = async (item) => {
-    if (item.materialId) {
-      await deleteMaterial(item.materialId).catch(() => {});
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(item.materialId);
-        return next;
-      });
+  const handleConfirmDelete = async () => {
+    if (!materialToDelete) return;
+    setIsDeleting(true);
+    try {
+      if (materialToDelete.materialId) {
+        await deleteMaterial(materialToDelete.materialId);
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(materialToDelete.materialId);
+          return next;
+        });
+      }
+      setFileList((items) => items.filter((candidate) => candidate.id !== materialToDelete.id));
+      toast.success(`Deleted "${materialToDelete.name}" successfully.`);
+      setMaterialToDelete(null);
+    } catch (err) {
+      toast.error(err.message || "Failed to delete material.");
+    } finally {
+      setIsDeleting(false);
     }
-    setFileList((items) => items.filter((candidate) => candidate.id !== item.id));
   };
 
   const toggleMaterialSelection = (materialId) => {
@@ -264,54 +437,167 @@ function UploadMaterial() {
       </div>
 
       {error && <p className="upload-material__error">{error}</p>}
+
       {fileList.length > 0 && (
-        <div className="upload-material__files">
-          <div className="upload-material__files-header">
-            <div>
-              <h3>Materials</h3>
-              <span className="upload-material__files-subtitle">
+        <div className="upload-material__slider-section">
+          <div className="upload-material__slider-header">
+            <div className="upload-material__slider-title-wrap">
+              <h3>Uploaded Materials</h3>
+              <span className="upload-material__slider-subtitle">
                 {selectedIds.size} of {availableMaterialIds.length} selected for quiz
               </span>
             </div>
-            {availableMaterialIds.length > 1 && (
-              <button
-                type="button"
-                className="upload-material__select-all-btn"
-                onClick={toggleSelectAll}
-              >
-                {selectedIds.size === availableMaterialIds.length ? "Deselect all" : "Select all"}
-              </button>
-            )}
-          </div>
-          {fileList.map((item) => (
-            <div
-              className={`upload-material__file ${
-                item.materialId && selectedIds.has(item.materialId) ? "upload-material__file--selected" : ""
-              }`}
-              key={item.id}
-            >
-              <div className="upload-material__file-left">
-                {item.status === "uploaded" && item.materialId && (
-                  <input
-                    type="checkbox"
-                    className="upload-material__checkbox"
-                    checked={selectedIds.has(item.materialId)}
-                    onChange={() => toggleMaterialSelection(item.materialId)}
-                    aria-label={`Select ${item.name} for quiz`}
-                  />
-                )}
-                <div className="upload-material__file-details">
-                  <strong>{item.name}</strong>
-                  <span className="upload-material__file-status">
-                    {item.status === "uploading" ? `${item.progress}%` : item.error || `${item.sizeLabel} · Ready`}
-                  </span>
-                </div>
+
+            <div className="upload-material__slider-actions">
+              {availableMaterialIds.length > 1 && (
+                <button
+                  type="button"
+                  className="upload-material__select-all-btn"
+                  onClick={toggleSelectAll}
+                >
+                  {selectedIds.size === availableMaterialIds.length ? "Deselect all" : "Select all"}
+                </button>
+              )}
+
+              <div className="upload-material__slider-nav">
+                <button
+                  type="button"
+                  className="upload-material__nav-btn"
+                  onClick={() => scrollSlider("left")}
+                  disabled={!canScrollLeft}
+                  aria-label="Scroll left"
+                  title="Scroll left"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  type="button"
+                  className="upload-material__nav-btn"
+                  onClick={() => scrollSlider("right")}
+                  disabled={!canScrollRight}
+                  aria-label="Scroll right"
+                  title="Scroll right"
+                >
+                  <ChevronRight size={18} />
+                </button>
               </div>
-              <button type="button" onClick={() => removeMaterial(item)} aria-label={`Remove ${item.name}`}>
-                <X size={16} />
-              </button>
             </div>
-          ))}
+          </div>
+
+          <div className="upload-material__slider-viewport">
+            {canScrollLeft && (
+              <div className="upload-material__slider-fade upload-material__slider-fade--left" />
+            )}
+            {canScrollRight && (
+              <div className="upload-material__slider-fade upload-material__slider-fade--right" />
+            )}
+
+            <div className="upload-material__slider-track" ref={sliderRef}>
+              {fileList.map((item) => {
+                const isSelected = Boolean(item.materialId && selectedIds.has(item.materialId));
+                const isReady = item.status === "uploaded" && Boolean(item.materialId);
+                const isUploading = item.status === "uploading";
+
+                return (
+                  <div
+                    key={item.id}
+                    className={`material-card ${isSelected ? "material-card--selected" : ""} ${
+                      isUploading ? "material-card--uploading" : ""
+                    } ${item.error ? "material-card--error" : ""}`}
+                    onClick={() => {
+                      if (isReady) {
+                        toggleMaterialSelection(item.materialId);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if ((e.key === "Enter" || e.key === " ") && isReady) {
+                        e.preventDefault();
+                        toggleMaterialSelection(item.materialId);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={isReady ? 0 : -1}
+                    aria-pressed={isSelected}
+                    title={item.name}
+                  >
+                    <div className="material-card__top">
+                      <FileTypeLogo filename={item.name} fileType={item.fileType} />
+
+                      <div className="material-card__actions">
+                        {isReady && (
+                          <div
+                            className={`material-card__check ${
+                              isSelected ? "material-card__check--selected" : ""
+                            }`}
+                            aria-hidden="true"
+                          >
+                            {isSelected && <Check size={12} strokeWidth={3} />}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          className="material-card__delete-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMaterialToDelete(item);
+                          }}
+                          aria-label={`Delete ${item.name}`}
+                          title="Delete material"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="material-card__body">
+                      <strong className="material-card__name" title={item.name}>
+                        {item.name}
+                      </strong>
+
+                      <div className="material-card__meta">
+                        {isUploading ? (
+                          <div className="material-card__uploading-meta">
+                            <div className="material-card__progress-bar">
+                              <div
+                                className="material-card__progress-fill"
+                                style={{ width: `${item.progress}%` }}
+                              />
+                            </div>
+                            <span className="material-card__status-text">
+                              Uploading {item.progress}%
+                            </span>
+                          </div>
+                        ) : item.error ? (
+                          <span className="material-card__status-error">
+                            {item.error}
+                          </span>
+                        ) : (
+                          <div className="material-card__ready-meta">
+                            <span className="material-card__size">{item.sizeLabel}</span>
+                            <span className="material-card__status-ready">Ready</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="material-card__footer">
+                      <span
+                        className={`material-card__select-label ${
+                          isSelected ? "material-card__select-label--active" : ""
+                        }`}
+                      >
+                        {isUploading
+                          ? "Uploading..."
+                          : isSelected
+                            ? "Selected for quiz"
+                            : "Click to select"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
@@ -496,6 +782,55 @@ function UploadMaterial() {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {materialToDelete && (
+        <div
+          className="material-delete-modal-overlay"
+          onClick={() => !isDeleting && setMaterialToDelete(null)}
+        >
+          <div className="material-delete-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="material-delete-modal__header">
+              <div className="material-delete-modal__icon">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3>Delete Study Material</h3>
+                <p>This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <p className="material-delete-modal__text">
+              Are you sure you want to delete <strong title={materialToDelete.name}>{materialToDelete.name}</strong>? This will permanently remove the material and any quizzes generated from it.
+            </p>
+
+            <div className="material-delete-modal__actions">
+              <button
+                type="button"
+                className="material-delete-modal__btn-cancel"
+                onClick={() => setMaterialToDelete(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="material-delete-modal__btn-delete"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 size={15} className="upload-material__spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Delete Material</span>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>
