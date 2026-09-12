@@ -31,9 +31,27 @@ class QuestionPublic(BaseModel):
     order_index: int
     question_type: QuestionType
     question_text: str
-    options: list[str] | None
+    options: list[str] | None = None
     difficulty: Difficulty
     topic: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def default_true_false_options(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            q_type = data.get("question_type")
+            opts = data.get("options")
+            if (q_type == QuestionType.TRUE_FALSE or q_type == "true_false") and not opts:
+                data["options"] = ["True", "False"]
+        elif hasattr(data, "question_type"):
+            q_type = getattr(data, "question_type")
+            opts = getattr(data, "options", None)
+            if (q_type == QuestionType.TRUE_FALSE or q_type == "true_false") and not opts:
+                try:
+                    setattr(data, "options", ["True", "False"])
+                except Exception:
+                    pass
+        return data
 
 
 class QuestionWithAnswer(QuestionPublic):
@@ -44,8 +62,6 @@ class QuestionWithAnswer(QuestionPublic):
     explanation: str
     source_reference: str | None
 
-
-from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 class QuizRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
