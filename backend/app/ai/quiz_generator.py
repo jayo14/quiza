@@ -71,14 +71,15 @@ def filter_valid_questions(
 def validate_generated_questions(
     questions: list[GeneratedQuestion], *, number_of_questions: int, question_types: list[QuestionType]
 ) -> list[GeneratedQuestion]:
-    """Validates that at least one usable question was returned and truncates to limit."""
+    """Validates that the model returned exactly the requested number of questions."""
     valid = filter_valid_questions(questions, question_types)
-    if not valid:
+    if len(valid) != number_of_questions:
         raise AIServiceError(
-            "The AI provider did not return any valid, usable questions for this material."
+            f"The AI provider returned {len(valid)} valid questions, "
+            f"but {number_of_questions} were requested."
         )
 
-    return valid[:number_of_questions]
+    return valid
 
 
 async def generate_quiz_questions(
@@ -143,7 +144,10 @@ async def generate_quiz_questions(
                 break
             raise exc
 
-    if not ctx_mgr.accumulated:
-        raise AIServiceError("The AI provider did not return any valid, usable questions for this material.")
+    if len(ctx_mgr.accumulated) != number_of_questions:
+        raise AIServiceError(
+            f"The AI provider returned {len(ctx_mgr.accumulated)} valid questions, "
+            f"but {number_of_questions} were requested."
+        )
 
-    return ctx_mgr.accumulated[:number_of_questions]
+    return ctx_mgr.accumulated

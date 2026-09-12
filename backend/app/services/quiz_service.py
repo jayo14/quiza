@@ -49,6 +49,7 @@ async def generate_quiz(
         material_id=primary_material.id,
         title=title,
         difficulty=difficulty,
+        number_of_questions=effective_count,
         status=QuizStatus.GENERATING,
     )
     db.add(quiz)
