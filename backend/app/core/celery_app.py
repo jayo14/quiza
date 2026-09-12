@@ -20,6 +20,9 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     worker_max_tasks_per_child=50,
     worker_max_memory_per_child=400000,
+    include=["app.tasks"],
 )
 
-celery_app.autodiscover_tasks(["app.tasks"])
+celery_app.autodiscover_tasks(["app"])
+
+import app.tasks  # noqa: E402, F401
