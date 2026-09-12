@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   getQuizQuestions,
@@ -109,8 +110,12 @@ function Quiz() {
 
   if (loading) {
     return (
-      <section className="quiz">
-        <p>Loading quiz questions...</p>
+      <section className="quiz quiz--loading">
+        <div className="quiz__loading-card">
+          <Loader2 size={36} className="quiz__spin" />
+          <h2>Preparing Quiz...</h2>
+          <p>Retrieving your questions and initializing your session.</p>
+        </div>
       </section>
     );
   }
