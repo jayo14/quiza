@@ -127,13 +127,13 @@ def generate_quiz_task(
         finally:
             loop.close()
 
+        if not generated:
+            raise ValueError("No questions could be generated from the selected materials.")
+
         if len(generated) > question_count:
             generated = generated[:question_count]
 
-        if len(generated) != question_count:
-            raise ValueError(
-                f"Generated {len(generated)} questions, but {question_count} were requested."
-            )
+        effective_count = len(generated)
 
         update_job("saving_quiz", 90)
         title = f"Quiz: {primary.title}" if len(materials) == 1 else f"Multi-Material Quiz ({len(materials)} sources)"
@@ -142,7 +142,7 @@ def generate_quiz_task(
             material_id=primary.id,
             title=title,
             difficulty=Difficulty(difficulty),
-            number_of_questions=question_count,
+            number_of_questions=effective_count,
             status=QuizStatus.READY,
         )
         db.add(quiz)
