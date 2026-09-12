@@ -84,6 +84,7 @@ class Settings(BaseSettings):
 
     # Celery / Redis
     redis_url: str = "redis://localhost:6379/0"
+    auto_start_celery: bool = True
 
 
     cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:3000,https://quiza-urmm.onrender.com"
