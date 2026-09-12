@@ -47,8 +47,10 @@ def validate_upload(*, filename: str, content_type: str | None, size_bytes: int)
             f"{', '.join(sorted(_EXTENSION_TO_FILE_TYPE))}."
         )
 
-    if content_type and content_type not in _ALLOWED_CONTENT_TYPES:
-        raise ValidationFailedError(f"Unsupported content type '{content_type}'.")
+    if content_type:
+        mime = content_type.split(";")[0].strip().lower()
+        if mime and mime != "application/octet-stream" and mime not in _ALLOWED_CONTENT_TYPES:
+            raise ValidationFailedError(f"Unsupported content type '{content_type}'.")
 
     return ValidatedUpload(file_type=file_type, size_bytes=size_bytes)
 
