@@ -26,7 +26,7 @@ def upgrade() -> None:
                 chunk_id VARCHAR PRIMARY KEY REFERENCES document_chunks(id) ON DELETE CASCADE,
                 material_id VARCHAR NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
                 user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                embedding vector(3072),
+                embedding vector(3072) NOT NULL,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
         """)
