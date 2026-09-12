@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.ai.llm.base import LLMProvider, _strip_code_fences
+from app.ai.llm.base import LLMProvider
 from app.ai.llm.openai import get_llm_provider
 from app.ai.prompts.summary import SUMMARY_SYSTEM_PROMPT, build_summary_user_prompt
 from app.models.attempt import QuizAttempt
@@ -110,7 +110,9 @@ async def generate_attempt_summary(
         known_weaknesses=_format_weaknesses(weaknesses),
         previous_attempt_comparison=_format_previous_comparison(attempt, previous_attempts),
     )
-    raw = await provider.complete(system_prompt=full_system_prompt, user_prompt=user_prompt)
-    cleaned = _strip_code_fences(raw)
-    data = json.loads(cleaned)
-    return raw, SummaryContent.model_validate(data)
+    content = await provider.generate_structured(
+        system_prompt=full_system_prompt,
+        user_prompt=user_prompt,
+        response_model=SummaryContent,
+    )
+    return content.model_dump_json(), content
