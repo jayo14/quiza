@@ -1,4 +1,3 @@
-import logging
 import uuid
 
 from sqlalchemy import select
@@ -10,9 +9,6 @@ from app.models.user import User
 from app.storage.local import get_storage_backend
 from app.utils.file_validation import validate_upload
 from app.ai.vectorstore.service import get_vector_store
-
-logger = logging.getLogger(__name__)
-
 
 def create_material(
     db: Session, *, user: User, filename: str, content_type: str | None, content: bytes, title: str | None
@@ -54,11 +50,8 @@ def get_owned_material(db: Session, *, user: User, material_id: str) -> Material
 def delete_material(db: Session, *, user: User, material_id: str) -> None:
     material = get_owned_material(db, user=user, material_id=material_id)
 
-    try:
-        vector_store = get_vector_store(db)
-        vector_store.delete_material(material_id=material.id, user_id=user.id, commit=False)
-    except Exception:
-        logger.warning("Failed to delete vector embeddings for material %s", material.id, exc_info=True)
+    vector_store = get_vector_store(db)
+    vector_store.delete_material(material_id=material.id, user_id=user.id, commit=False)
 
     storage = get_storage_backend()
     storage.delete(material.storage_path)
