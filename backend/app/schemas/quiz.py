@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field
 
 from app.models.enums import Difficulty, GenerationJobStatus, QuestionType, QuizStatus
 
@@ -8,7 +8,12 @@ from app.models.enums import Difficulty, GenerationJobStatus, QuestionType, Quiz
 class QuizGenerateRequest(BaseModel):
     material_id: str | None = None
     material_ids: list[str] | None = None
-    number_of_questions: int = Field(default=10, ge=1, le=50)
+    number_of_questions: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        validation_alias=AliasChoices("number_of_questions", "question_count"),
+    )
     difficulty: Difficulty = Difficulty.MEDIUM
     question_types: list[QuestionType] = Field(
         default_factory=lambda: [QuestionType.MULTIPLE_CHOICE, QuestionType.TRUE_FALSE]
