@@ -23,6 +23,9 @@ from app.main import app as fastapi_app  # noqa: E402
 def _fresh_database():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+    from app.core.rate_limit import _auth_limiter, ai_rate_limiter
+    _auth_limiter._hits.clear()
+    ai_rate_limiter._hits.clear()
     yield
 
 

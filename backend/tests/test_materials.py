@@ -13,7 +13,7 @@ def _upload_text_material(client, headers, filename="notes.txt", content=None):
         )
 
 
-def test_upload_material_processes_to_ready(client, signup):
+def test_upload_material_stays_uploaded_until_generation(client, signup):
     headers, _ = signup()
     response = _upload_text_material(client, headers)
     assert response.status_code == 201
@@ -21,7 +21,7 @@ def test_upload_material_processes_to_ready(client, signup):
     assert material["status"] == "uploaded"
 
     detail = client.get(f"/api/v1/materials/{material['id']}", headers=headers)
-    assert detail.json()["status"] == "ready"
+    assert detail.json()["status"] == "uploaded"
 
 
 def test_upload_rejects_unsupported_file_type(client, signup):

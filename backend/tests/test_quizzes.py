@@ -1,3 +1,4 @@
+import asyncio
 import json
 from unittest.mock import patch
 
@@ -11,6 +12,8 @@ def _upload_ready_material(client, headers):
             files={"file": ("notes.txt", b"Photosynthesis converts light into energy. " * 20, "text/plain")},
             headers=headers,
         )
+        from app.ai.rag.ingestion import run_ingestion_for_material
+        asyncio.run(run_ingestion_for_material(response.json()["id"]))
     return response.json()["id"]
 
 

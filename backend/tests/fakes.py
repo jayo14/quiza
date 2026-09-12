@@ -16,6 +16,12 @@ class FakeEmbeddingProvider:
     async def embed_one(self, text: str) -> list[float]:
         return (await self.embed([text]))[0]
 
+    async def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return await self.embed(texts)
+
+    async def embed_query(self, text: str) -> list[float]:
+        return await self.embed_one(text)
+
 
 class FakeQuizLLM(LLMProvider):
     """Returns a fixed set of questions regardless of prompt, still routed through
