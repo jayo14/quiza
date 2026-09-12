@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import patch
 
 from tests.fakes import FakeEmbeddingProvider, fake_get_context_for_query, generate_quiz_with_fakes, true_false_questions
@@ -10,6 +11,8 @@ def _setup_and_submit(client, headers, *, correct_answers: list[bool]):
             files={"file": ("notes.txt", b"Photosynthesis converts light into energy. " * 20, "text/plain")},
             headers=headers,
         )
+        from app.ai.rag.ingestion import run_ingestion_for_material
+        asyncio.run(run_ingestion_for_material(upload.json()["id"]))
     material_id = upload.json()["id"]
 
     questions = true_false_questions("Photosynthesis", len(correct_answers), correct_answer="True")
