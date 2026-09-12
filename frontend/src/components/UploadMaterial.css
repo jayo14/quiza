@@ -1284,9 +1284,14 @@
   transition: all 0.2s ease;
 }
 
-.upload-material__retry-job-btn:hover {
+.upload-material__retry-job-btn:hover:not(:disabled) {
   border-color: var(--primary);
   color: var(--primary);
+}
+
+.upload-material__retry-job-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .upload-material__processing--failed {

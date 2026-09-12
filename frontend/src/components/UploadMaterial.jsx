@@ -829,10 +829,20 @@ function UploadMaterial() {
               <button
                 type="button"
                 className="upload-material__retry-job-btn"
-                onClick={handleGenerate}
+                onClick={handleRetryJob}
+                disabled={isRetryingJob}
               >
-                <RotateCcw size={15} />
-                <span>Try Again</span>
+                {isRetryingJob ? (
+                  <>
+                    <Loader2 size={15} className="upload-material__spin" />
+                    <span>Retrying...</span>
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw size={15} />
+                    <span>Try Again</span>
+                  </>
+                )}
               </button>
             </div>
           )}
