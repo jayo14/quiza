@@ -124,6 +124,7 @@ function Quiz() {
 
       const result = await submitAttempt(attemptId, formattedAnswers);
       navigate(`/summary?attempt_id=${result.id}`, {
+        replace: true,
         state: { attemptResult: result },
       });
     } catch (err) {
