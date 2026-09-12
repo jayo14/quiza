@@ -27,7 +27,7 @@ function MyQuizzes() {
       const data = await listQuizzes();
       const validQuizzes = (data || []).filter((quiz) => {
         const status = (quiz.status || "").toLowerCase();
-        const qCount = quiz.number_of_questions || quiz.question_count || quiz.questions?.length || 0;
+        const qCount = quiz.question_count || quiz.questions?.length || quiz.number_of_questions || 0;
         return status !== "failed" && status !== "generating" && qCount > 0;
       });
       setQuizzes(validQuizzes);
@@ -71,7 +71,7 @@ function MyQuizzes() {
 
   const visibleQuizzes = quizzes.filter((quiz) => {
     const status = (quiz.status || "").toLowerCase();
-    const qCount = quiz.number_of_questions || quiz.question_count || quiz.questions?.length || 0;
+    const qCount = quiz.question_count || quiz.questions?.length || quiz.number_of_questions || 0;
     return status !== "failed" && status !== "generating" && qCount > 0;
   });
 
@@ -104,7 +104,7 @@ function MyQuizzes() {
         <div className="my-quizzes__list">
           {visibleQuizzes.map((quiz) => {
             const diff = (quiz.difficulty || "medium").toLowerCase();
-            const questionCount = quiz.number_of_questions || quiz.question_count || quiz.questions?.length || 0;
+            const questionCount = quiz.question_count || quiz.questions?.length || quiz.number_of_questions || 0;
 
             return (
               <div className="my-quiz" key={quiz.id}>
