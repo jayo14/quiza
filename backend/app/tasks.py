@@ -78,9 +78,10 @@ def generate_quiz_task(
         if job.status == GenerationJobStatus.PROCESSING:
             return {"status": "already_processing", "job_id": job_id}
 
+        task_id = getattr(getattr(self, "request", None), "id", None)
         job.status = GenerationJobStatus.PROCESSING
         job.started_at = job.started_at or _utcnow()
-        job.celery_task_id = job.celery_task_id or self.request.id
+        job.celery_task_id = job.celery_task_id or task_id
         db.add(job)
         db.commit()
 
@@ -126,6 +127,9 @@ def generate_quiz_task(
         finally:
             loop.close()
 
+        if len(generated) > question_count:
+            generated = generated[:question_count]
+
         if len(generated) != question_count:
             raise ValueError(
                 f"Generated {len(generated)} questions, but {question_count} were requested."
@@ -170,14 +174,15 @@ def generate_quiz_task(
         logger.info(
             "Generation job completed job_id=%s task_id=%s user_id=%s materials=%s question_count=%d",
             job_id,
-            self.request.id,
+            task_id,
             user_id,
             material_ids,
             question_count,
         )
         return {"status": "completed", "job_id": job_id, "quiz_id": quiz.id}
     except Exception as exc:
-        logger.exception("Generation job failed job_id=%s task_id=%s", job_id, self.request.id)
+        fallback_task_id = getattr(getattr(self, "request", None), "id", None) if "self" in locals() else None
+        logger.exception("Generation job failed job_id=%s task_id=%s", job_id, fallback_task_id)
         db.rollback()
         if job is None:
             job = db.get(GenerationJob, job_id)
