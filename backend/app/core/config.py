@@ -1,10 +1,17 @@
 from functools import lru_cache
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pathlib import Path
+
+_backend_dir = Path(__file__).resolve().parents[2]
+_env_candidates = (
+    ".env",
+    "backend/.env",
+    str(_backend_dir / ".env"),
+)
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_env_candidates, env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "Quiza"
     app_env: str = "development"
