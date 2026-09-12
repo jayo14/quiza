@@ -33,9 +33,27 @@ app.add_middleware(
 )
 
 
+def _get_cors_headers(request: Request) -> dict[str, str]:
+    origin = request.headers.get("origin")
+    headers: dict[str, str] = {}
+    if origin and (origin in settings.cors_origin_list or "*" in settings.cors_origin_list):
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+        headers["Access-Control-Allow-Methods"] = "*"
+        headers["Access-Control-Allow-Headers"] = "*"
+    elif origin:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+    return headers
+
+
 @app.exception_handler(QuizaError)
 def handle_quiza_error(request: Request, exc: QuizaError) -> JSONResponse:
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers=_get_cors_headers(request),
+    )
 
 
 @app.exception_handler(Exception)
