@@ -34,3 +34,10 @@ class Quiz(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="quiz", cascade="all, delete-orphan", passive_deletes=True
     )
     generation_job: Mapped["GenerationJob | None"] = relationship(back_populates="quiz")
+
+    @property
+    def question_count(self) -> int:
+        try:
+            return len(self.questions) if self.questions is not None else 0
+        except Exception:
+            return 0
