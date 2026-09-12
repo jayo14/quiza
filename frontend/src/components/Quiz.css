@@ -136,6 +136,18 @@
   .quiz__options {
     grid-template-columns: 1fr;
   }
+
+  .quiz__footer {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .quiz__prev,
+  .quiz__next {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
 }
 
 .quiz--loading {
