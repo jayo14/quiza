@@ -55,7 +55,11 @@ def start_celery_worker() -> subprocess.Popen | None:
     # Check Redis connectivity
     try:
         import redis
-        r = redis.from_url(settings.redis_url)
+        kwargs = {}
+        if settings.redis_url.startswith("rediss://"):
+            import ssl
+            kwargs["ssl_cert_reqs"] = ssl.CERT_NONE
+        r = redis.from_url(settings.redis_url, **kwargs)
         r.ping()
     except Exception as exc:
         logger.warning(

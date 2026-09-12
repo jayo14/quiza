@@ -1,12 +1,26 @@
+import ssl
+
 from celery import Celery
 
 from app.core.config import settings
+
+broker_use_ssl = None
+if settings.redis_url.startswith("rediss://"):
+    broker_use_ssl = {
+        "ssl_cert_reqs": ssl.CERT_NONE,
+    }
 
 celery_app = Celery(
     "quiza",
     broker=settings.redis_url,
     backend=settings.redis_url,
 )
+
+if broker_use_ssl:
+    celery_app.conf.update(
+        broker_use_ssl=broker_use_ssl,
+        redis_backend_use_ssl=broker_use_ssl,
+    )
 
 celery_app.conf.update(
     task_serializer="json",
