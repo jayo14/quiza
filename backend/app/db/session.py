@@ -10,10 +10,25 @@ if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
 is_sqlite = db_url.startswith("sqlite")
-connect_args = {"check_same_thread": False} if is_sqlite else {}
-engine_kwargs = {"connect_args": connect_args}
-if not is_sqlite:
-    engine_kwargs.update({"pool_pre_ping": True, "pool_recycle": 300})
+if is_sqlite:
+    connect_args = {"check_same_thread": False}
+    engine_kwargs = {"connect_args": connect_args}
+else:
+    connect_args = {
+        "connect_timeout": 5,
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5,
+    }
+    engine_kwargs = {
+        "connect_args": connect_args,
+        "pool_pre_ping": False,
+        "pool_recycle": 300,
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_timeout": 10,
+    }
 
 engine = create_engine(db_url, **engine_kwargs)
 
