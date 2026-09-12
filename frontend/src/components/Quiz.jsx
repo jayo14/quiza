@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   getQuizQuestions,
@@ -81,34 +81,41 @@ function Quiz() {
     }));
   };
 
+  const handlePrevious = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion((prev) => prev - 1);
+    }
+  };
+
   const handleNext = async () => {
-    if (!selectedAnswer || !question) return;
-
-    const currentAnswerObj = {
-      question_id: question.id,
-      selected_answer: selectedAnswer,
-      time_taken_seconds: null,
-    };
-
-    const newAnswers = [...userAnswers, currentAnswerObj];
-    setUserAnswers(newAnswers);
-
     if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-      setSelectedAnswer("");
-    } else {
-      setSubmitting(true);
-      try {
-        const result = await submitAttempt(attemptId, newAnswers);
-        navigate(`/summary?attempt_id=${result.id}`, {
-          state: { attemptResult: result },
-        });
-      } catch (err) {
-        console.error("Failed to submit attempt:", err);
-        toast.error(err.message || "Failed to submit attempt");
-      } finally {
-        setSubmitting(false);
-      }
+      setCurrentQuestion((prev) => prev + 1);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const formattedAnswers = questions
+        .map((q) => {
+          const ans = answersByQuestionId[q.id];
+          if (!ans) return null;
+          return {
+            question_id: q.id,
+            selected_answer: ans,
+            time_taken_seconds: null,
+          };
+        })
+        .filter(Boolean);
+
+      const result = await submitAttempt(attemptId, formattedAnswers);
+      navigate(`/summary?attempt_id=${result.id}`, {
+        state: { attemptResult: result },
+      });
+    } catch (err) {
+      console.error("Failed to submit attempt:", err);
+      toast.error(err.message || "Failed to submit attempt");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -171,15 +178,37 @@ function Quiz() {
 
       <div className="quiz__footer">
         <button
+          type="button"
+          className="quiz__prev"
+          onClick={handlePrevious}
+          disabled={currentQuestion === 0 || submitting}
+        >
+          <ChevronLeft size={16} />
+          <span>Previous</span>
+        </button>
+
+        <button
+          type="button"
           className="quiz__next"
           onClick={handleNext}
-          disabled={!selectedAnswer || submitting}
+          disabled={submitting}
         >
-          {submitting
-            ? "Submitting..."
-            : currentQuestion === questions.length - 1
-            ? "Finish Quiz"
-            : "Next Question"}
+          {submitting ? (
+            <>
+              <Loader2 size={16} className="quiz__spin" />
+              <span>Submitting...</span>
+            </>
+          ) : currentQuestion === questions.length - 1 ? (
+            <>
+              <span>Finish Quiz</span>
+              <CheckCircle2 size={16} />
+            </>
+          ) : (
+            <>
+              <span>Next Question</span>
+              <ChevronRight size={16} />
+            </>
+          )}
         </button>
       </div>
     </section>
