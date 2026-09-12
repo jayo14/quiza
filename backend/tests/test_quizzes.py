@@ -115,3 +115,20 @@ def test_list_quizzes_excludes_failed_quizzes(client, signup):
     assert response.status_code == 200
     assert len(response.json()) == 0
 
+
+def test_list_quizzes_reports_actual_question_count(client, signup):
+    headers, _ = signup()
+    material_id = _upload_ready_material(client, headers)
+    generated = generate_quiz_with_fakes(
+        client, headers, material_id=material_id, questions=true_false_questions("Topic", 3)
+    )
+    assert generated.status_code == 201
+    quiz_id = generated.json()["id"]
+
+    response = client.get("/api/v1/quizzes", headers=headers)
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 1
+    assert items[0]["id"] == quiz_id
+    assert items[0]["question_count"] == 3
+
