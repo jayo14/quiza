@@ -20,8 +20,7 @@ function Quiz() {
   const [questions, setQuestions] = useState([]);
   const [attemptId, setAttemptId] = useState(attemptIdParam || null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState("");
-  const [userAnswers, setUserAnswers] = useState([]);
+  const [answersByQuestionId, setAnswersByQuestionId] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -72,9 +71,14 @@ function Quiz() {
   }, [quizIdParam, attemptIdParam]);
 
   const question = questions[currentQuestion];
+  const selectedAnswer = question ? (answersByQuestionId[question.id] || "") : "";
 
   const handleAnswer = (option) => {
-    setSelectedAnswer(option);
+    if (!question) return;
+    setAnswersByQuestionId((prev) => ({
+      ...prev,
+      [question.id]: option,
+    }));
   };
 
   const handleNext = async () => {
