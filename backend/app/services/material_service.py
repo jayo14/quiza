@@ -55,5 +55,9 @@ def delete_material(db: Session, *, user: User, material_id: str) -> None:
 
     storage = get_storage_backend()
     storage.delete(material.storage_path)
+
+    for quiz in list(material.quizzes):
+        db.delete(quiz)
+
     db.delete(material)
     db.commit()
