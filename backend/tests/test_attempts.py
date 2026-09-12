@@ -147,3 +147,40 @@ def test_start_attempt_handles_multiple_in_progress_attempts(client, signup):
     body = response.json()
     assert body["status"] == "in_progress"
     assert body["id"] == att2_id
+
+
+def test_quiz_can_be_taken_multiple_times_and_attempts_tracked(client, signup):
+    headers, _ = signup()
+    quiz_id, question_ids = _setup_ready_quiz(client, headers, count=2)
+
+    # Attempt 1: Start and submit
+    att1_res = client.post(f"/api/v1/quizzes/{quiz_id}/attempts", headers=headers)
+    assert att1_res.status_code in (200, 201)
+    att1 = att1_res.json()
+
+    answers1 = [{"question_id": qid, "selected_answer": "True"} for qid in question_ids]
+    sub1_res = client.post(f"/api/v1/attempts/{att1['id']}/submit", json={"answers": answers1}, headers=headers)
+    assert sub1_res.status_code == 200
+    assert sub1_res.json()["status"] == "completed"
+
+    # Attempt 2: Retake same quiz (should create a new attempt)
+    att2_res = client.post(f"/api/v1/quizzes/{quiz_id}/attempts", headers=headers)
+    assert att2_res.status_code in (200, 201)
+    att2 = att2_res.json()
+    assert att2["id"] != att1["id"]
+    assert att2["status"] == "in_progress"
+
+    answers2 = [{"question_id": qid, "selected_answer": "False"} for qid in question_ids]
+    sub2_res = client.post(f"/api/v1/attempts/{att2['id']}/submit", json={"answers": answers2}, headers=headers)
+    assert sub2_res.status_code == 200
+    assert sub2_res.json()["status"] == "completed"
+
+    # Check that both attempts are tracked in user's attempt history
+    list_res = client.get("/api/v1/attempts", headers=headers)
+    assert list_res.status_code == 200
+    attempts_list = list_res.json()
+    attempt_ids = [a["id"] for a in attempts_list]
+    assert att1["id"] in attempt_ids
+    assert att2["id"] in attempt_ids
+    assert len(attempts_list) >= 2
+
