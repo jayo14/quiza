@@ -15,7 +15,7 @@ if is_sqlite:
     engine_kwargs = {"connect_args": connect_args}
 else:
     connect_args = {
-        "connect_timeout": 5,
+        "connect_timeout": 15,
         "keepalives": 1,
         "keepalives_idle": 30,
         "keepalives_interval": 10,
