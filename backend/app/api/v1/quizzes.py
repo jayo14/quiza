@@ -154,6 +154,42 @@ def retry_generation_job(
     return GenerationJobRead.model_validate(job)
 
 
+@router.post(
+    "/generation-jobs/{job_id}/cancel", response_model=GenerationJobRead, status_code=200,
+)
+def cancel_generation_job(
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> GenerationJobRead:
+    from datetime import datetime, timezone
+    from fastapi import HTTPException
+    from app.models.generation_job import GenerationJob
+    from app.models.enums import GenerationJobStatus
+    from app.core.exceptions import NotFoundError
+    from app.core.celery_app import celery_app
+
+    job = db.get(GenerationJob, job_id)
+    if not job or job.user_id != current_user.id:
+        raise NotFoundError("Generation job not found.")
+
+    if job.status not in (GenerationJobStatus.QUEUED, GenerationJobStatus.PROCESSING):
+        raise HTTPException(status_code=400, detail="Job is not active and cannot be cancelled.")
+
+    if job.celery_task_id:
+        celery_app.control.revoke(job.celery_task_id, terminate=True, signal="SIGTERM")
+
+    job.status = GenerationJobStatus.CANCELLED
+    job.current_stage = "cancelled"
+    job.completed_at = datetime.now(timezone.utc)
+    job.error_message = None
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    return GenerationJobRead.model_validate(job)
+
+
 @router.get("", response_model=list[QuizRead])
 def list_quizzes(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[QuizRead]:
     return quiz_service.list_quizzes(db, user=current_user)

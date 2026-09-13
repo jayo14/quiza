@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  cancelGenerationJob,
   deleteMaterial,
   generateQuizBackground,
   getGenerationJob,
@@ -169,6 +170,7 @@ function UploadMaterial() {
   const [materialToDelete, setMaterialToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRetryingJob, setIsRetryingJob] = useState(false);
+  const [isCancellingJob, setIsCancellingJob] = useState(false);
   const [isStartingQuiz, setIsStartingQuiz] = useState(false);
 
   const pollJob = useCallback(async function pollGenerationJob(jobId) {
@@ -182,6 +184,10 @@ function UploadMaterial() {
       }
       if (current.status === "failed") {
         toast.error(current.error_message || "Quiz generation failed.");
+        return;
+      }
+      if (current.status === "cancelled") {
+        toast.info("Quiz generation was cancelled.");
         return;
       }
       poller.current = setTimeout(() => pollGenerationJob(jobId), POLL_INTERVAL);
@@ -433,6 +439,20 @@ function UploadMaterial() {
     }
   };
 
+  const handleCancelJob = async () => {
+    if (!job || isCancellingJob) return;
+    setIsCancellingJob(true);
+    try {
+      const cancelled = await cancelGenerationJob(job.id);
+      setJob(cancelled);
+      toast.info("Quiz generation cancelled.");
+    } catch (err) {
+      toast.error(err.message || "Failed to cancel quiz generation.");
+    } finally {
+      setIsCancellingJob(false);
+    }
+  };
+
   const handleStartQuizFromJob = async (quizId) => {
     try {
       setIsStartingQuiz(true);
@@ -459,9 +479,11 @@ function UploadMaterial() {
     ? "Quiz ready"
     : job?.status === "failed"
       ? "Generation failed"
-      : job?.status === "queued"
-        ? "Waiting to start"
-        : "Generating your quiz";
+      : job?.status === "cancelled"
+        ? "Generation cancelled"
+        : job?.status === "queued"
+          ? "Waiting to start"
+          : "Generating your quiz";
   return (
     <section className="upload-material">
       <div className="upload-material__header">
@@ -811,6 +833,26 @@ function UploadMaterial() {
           <p className="upload-material__job-stage">
             {stageLabel || "Waiting to start"}{generating ? " · This may take a few minutes." : ""}
           </p>
+          {generating && (
+            <button
+              type="button"
+              className="upload-material__cancel-job-btn"
+              onClick={handleCancelJob}
+              disabled={isCancellingJob}
+            >
+              {isCancellingJob ? (
+                <>
+                  <Loader2 size={15} className="upload-material__spin" />
+                  <span>Cancelling...</span>
+                </>
+              ) : (
+                <>
+                  <X size={15} />
+                  <span>Cancel</span>
+                </>
+              )}
+            </button>
+          )}
           {job.status === "completed" && job.quiz_id && (
             <button
               type="button"

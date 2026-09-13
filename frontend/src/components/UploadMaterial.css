@@ -1300,12 +1300,43 @@
   cursor: not-allowed;
 }
 
+.upload-material__cancel-job-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 10px;
+}
+
+.upload-material__cancel-job-btn:hover:not(:disabled) {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.upload-material__cancel-job-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .upload-material__processing--failed {
   border-color: #fca5a5;
 }
 
 .upload-material__processing--completed {
   border-color: #86efac;
+}
+
+.upload-material__processing--cancelled {
+  border-color: #d1d5db;
 }
 
 @media (max-width: 640px) {
