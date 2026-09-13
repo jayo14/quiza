@@ -17,16 +17,16 @@ class LocalStorageBackend(StorageBackend):
             raise ValueError("Resolved path escapes the storage root.")
         return resolved
 
-    def save(self, *, key: str, content: bytes) -> str:
+    def save(self, *, key: str, content: bytes, bucket: str | None = None) -> str:
         destination = self._resolve(key)
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(content)
         return key
 
-    def read(self, path: str) -> bytes:
+    def read(self, path: str, bucket: str | None = None) -> bytes:
         return self._resolve(path).read_bytes()
 
-    def delete(self, path: str) -> None:
+    def delete(self, path: str, bucket: str | None = None) -> None:
         resolved = self._resolve(path)
         if resolved.exists():
             os.remove(resolved)

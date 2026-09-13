@@ -17,16 +17,16 @@ class SupabaseStorageBackend(StorageBackend):
         self._client = create_client(supa_url, supa_key)
         self._bucket_name = bucket_name or settings.supabase_storage_bucket
 
-    def save(self, *, key: str, content: bytes) -> str:
-        self._client.storage.from_(self._bucket_name).upload(
+    def save(self, *, key: str, content: bytes, bucket: str | None = None) -> str:
+        self._client.storage.from_(bucket or self._bucket_name).upload(
             path=key,
             file=content,
             file_options={"upsert": "true"},
         )
         return key
 
-    def read(self, path: str) -> bytes:
-        return self._client.storage.from_(self._bucket_name).download(path)
+    def read(self, path: str, bucket: str | None = None) -> bytes:
+        return self._client.storage.from_(bucket or self._bucket_name).download(path)
 
-    def delete(self, path: str) -> None:
-        self._client.storage.from_(self._bucket_name).remove([path])
+    def delete(self, path: str, bucket: str | None = None) -> None:
+        self._client.storage.from_(bucket or self._bucket_name).remove([path])
