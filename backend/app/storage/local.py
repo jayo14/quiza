@@ -32,13 +32,21 @@ class LocalStorageBackend(StorageBackend):
             os.remove(resolved)
 
 
+_storage_backend: StorageBackend | None = None
+
+
 def get_storage_backend() -> StorageBackend:
+    global _storage_backend
+    if _storage_backend is not None:
+        return _storage_backend
+
     from app.core.config import settings
 
     if settings.storage_backend == "local":
-        return LocalStorageBackend(settings.storage_dir)
-    if settings.storage_backend == "supabase":
+        _storage_backend = LocalStorageBackend(settings.storage_dir)
+    elif settings.storage_backend == "supabase":
         from app.storage.supabase import SupabaseStorageBackend
-
-        return SupabaseStorageBackend()
-    raise ValueError(f"Unsupported storage backend: {settings.storage_backend}")
+        _storage_backend = SupabaseStorageBackend()
+    else:
+        raise ValueError(f"Unsupported storage backend: {settings.storage_backend}")
+    return _storage_backend
