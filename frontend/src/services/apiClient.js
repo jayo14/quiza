@@ -153,27 +153,6 @@ export async function deleteMaterial(materialId) {
 }
 
 // --- Quizzes ---
-export async function generateQuiz({
-  material_id,
-  material_ids,
-  number_of_questions = 5,
-  difficulty = "medium",
-  question_types = ["multiple_choice"],
-}) {
-  const response = await fetchWithTimeout(`${API_BASE_URL}/quizzes/generate`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify({
-      material_id,
-      material_ids,
-      number_of_questions,
-      difficulty,
-      question_types,
-    }),
-  });
-  return handleResponse(response);
-}
-
 export async function generateQuizBackground({
   material_id,
   material_ids,
