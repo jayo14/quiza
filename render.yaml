@@ -1,4 +1,5 @@
 services:
+  # --- Web API ---
   - type: web
     name: quiza-backend
     env: docker
@@ -38,8 +39,50 @@ services:
         value: /app/storage
       - key: VECTOR_STORE_BACKEND
         value: sqlite
+      - key: REDIS_URL
+        sync: false
+      - key: AUTO_START_CELERY
+        value: "true"
       - key: CORS_ORIGINS
         value: "*"
+
+  # --- Celery Worker (optional: enable for proper production setup) ---
+  # Uncomment this section if you want a dedicated worker process.
+  # Requires upgrading to a paid Render plan ($7/mo minimum).
+  # If left commented out, AUTO_START_CELERY=true runs the worker
+  # as a subprocess inside the web service above.
+  #
+  # - type: worker
+  #   name: quiza-celery-worker
+  #   env: docker
+  #   dockerfilePath: ./backend/Dockerfile
+  #   dockerContext: ./backend
+  #   plan: basic
+  #   region: oregon
+  #   envVars:
+  #     - key: APP_ENV
+  #       value: production
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: quiza-db
+  #         property: connectionString
+  #     - key: REDIS_URL
+  #       sync: false
+  #     - key: AUTO_START_CELERY
+  #       value: "false"
+  #     - key: GEMINI_API_KEY
+  #       sync: false
+  #     - key: GEMINI_EMBEDDING_MODEL
+  #       value: text-embedding-004
+  #     - key: VECTOR_STORE_BACKEND
+  #       value: sqlite
+  #     - key: STORAGE_BACKEND
+  #       value: local
+  #     - key: STORAGE_DIR
+  #       value: /app/storage
+  #   # The worker runs: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
+  #   # Override the start command if needed:
+  #   # startCommand: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
 
 databases:
   - name: quiza-db
