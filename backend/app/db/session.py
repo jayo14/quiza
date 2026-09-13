@@ -15,7 +15,7 @@ if is_sqlite:
     engine_kwargs = {"connect_args": connect_args}
 else:
     connect_args = {
-        "connect_timeout": 15,
+        "connect_timeout": 5,
         "keepalives": 1,
         "keepalives_idle": 30,
         "keepalives_interval": 10,
@@ -23,8 +23,8 @@ else:
     }
     engine_kwargs = {
         "connect_args": connect_args,
-        "pool_pre_ping": False,
-        "pool_recycle": 300,
+        "pool_pre_ping": True,
+        "pool_recycle": 1800,
         "pool_size": 10,
         "max_overflow": 20,
         "pool_timeout": 10,
