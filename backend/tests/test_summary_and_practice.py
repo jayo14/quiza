@@ -21,8 +21,10 @@ def _quiz_and_questions(client, headers, material_id, topic="Photosynthesis", co
     generated = generate_quiz_with_fakes(
         client, headers, material_id=material_id, questions=questions, question_types=["true_false"]
     )
-    body = generated.json()
-    return body["id"], [q["id"] for q in body["questions"]]
+    quiz_body = generated.json()
+    quiz_id = quiz_body["id"]
+    questions_resp = client.get(f"/api/v1/quizzes/{quiz_id}/questions", headers=headers)
+    return quiz_id, [q["id"] for q in questions_resp.json()]
 
 
 def _submit_with_mocked_mistake_analysis(client, headers, attempt_id, answers):

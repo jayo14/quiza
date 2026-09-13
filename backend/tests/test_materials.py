@@ -101,7 +101,7 @@ def test_delete_material_with_associated_quizzes_succeeds(client, signup):
 
     # Generate a quiz associated with this material
     quiz_res = generate_quiz_with_fakes(client, headers, material_id=material_id, questions=true_false_questions("Topic", 2))
-    assert quiz_res.status_code == 201
+    assert quiz_res.status_code == 200
 
     # Deleting material should delete cleanly without NotNullViolation on quizzes.material_id
     delete = client.delete(f"/api/v1/materials/{material_id}", headers=headers)

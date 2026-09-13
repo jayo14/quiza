@@ -19,8 +19,10 @@ def _setup_ready_quiz(client, headers, *, topic="Photosynthesis", count=4, corre
     generated = generate_quiz_with_fakes(
         client, headers, material_id=material_id, questions=questions, question_types=["true_false"]
     )
-    body = generated.json()
-    return body["id"], [q["id"] for q in body["questions"]]
+    quiz_body = generated.json()
+    quiz_id = quiz_body["id"]
+    questions_resp = client.get(f"/api/v1/quizzes/{quiz_id}/questions", headers=headers)
+    return quiz_id, [q["id"] for q in questions_resp.json()]
 
 
 def test_start_attempt_creates_in_progress_attempt(client, signup):

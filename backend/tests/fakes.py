@@ -97,8 +97,16 @@ def generate_quiz_with_fakes(client, headers, *, material_id: str, questions: li
 
     assert result["status"] == "completed", f"Task failed: {result}"
 
-    # Step 3: Return the job response (matches what the frontend polls)
-    return client.get(f"/api/v1/quizzes/generation-jobs/{job_id}", headers=headers)
+    # Step 3: Fetch the completed quiz via the job's quiz_id
+    from app.db.session import SessionLocal
+    from app.models.generation_job import GenerationJob
+
+    db = SessionLocal()
+    db_job = db.get(GenerationJob, job_id)
+    quiz_id = db_job.quiz_id
+    db.close()
+
+    return client.get(f"/api/v1/quizzes/{quiz_id}", headers=headers)
 
 
 def true_false_questions(topic: str, count: int, correct_answer: str = "True") -> list[dict]:

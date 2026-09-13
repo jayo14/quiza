@@ -19,8 +19,10 @@ def _setup_and_submit(client, headers, *, correct_answers: list[bool]):
     generated = generate_quiz_with_fakes(
         client, headers, material_id=material_id, questions=questions, question_types=["true_false"]
     )
-    body = generated.json()
-    quiz_id, question_ids = body["id"], [q["id"] for q in body["questions"]]
+    quiz_body = generated.json()
+    quiz_id = quiz_body["id"]
+    questions_resp = client.get(f"/api/v1/quizzes/{quiz_id}/questions", headers=headers)
+    question_ids = [q["id"] for q in questions_resp.json()]
 
     attempt = client.post(f"/api/v1/quizzes/{quiz_id}/attempts", headers=headers).json()
     answers = [
