@@ -16,7 +16,7 @@ def create_material(
     validated = validate_upload(filename=filename, content_type=content_type, size_bytes=len(content))
 
     storage = get_storage_backend()
-    storage_key = f"materials/{user.id}/{uuid.uuid4().hex}_{filename}"
+    storage_key = f"{user.id}/{uuid.uuid4().hex}_{filename}"
     storage_path = storage.save(key=storage_key, content=content)
 
     material = Material(
