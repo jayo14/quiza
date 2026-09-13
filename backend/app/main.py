@@ -1,9 +1,11 @@
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.router import api_router
 from app.core.config import settings
@@ -32,6 +34,37 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class RequestTimingMiddleware(BaseHTTPMiddleware):
+    """Logs request method, path, status code, and duration in milliseconds.
+
+    Skips health-check endpoints to avoid noise. Only logs slow requests
+    (>500ms) at WARNING level; everything else at DEBUG.
+    """
+
+    _SKIP_PATHS = {"/health", "/ping", f"{settings.api_v1_prefix}/health", f"{settings.api_v1_prefix}/ping"}
+
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path in self._SKIP_PATHS:
+            return await call_next(request)
+
+        start = time.perf_counter()
+        response = await call_next(request)
+        duration_ms = (time.perf_counter() - start) * 1000
+
+        log_fn = logger.warning if duration_ms > 500 else logger.debug
+        log_fn(
+            "request=%s %s status=%d duration_ms=%.1f",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms,
+        )
+        return response
+
+
+app.add_middleware(RequestTimingMiddleware)
 
 
 def _get_cors_headers(request: Request) -> dict[str, str]:
