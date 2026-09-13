@@ -193,3 +193,21 @@ def root_redirect() -> RedirectResponse:
 @app.get(f"{settings.api_v1_prefix}/ping", tags=["health"])
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/health/db", tags=["health"])
+@app.get(f"{settings.api_v1_prefix}/health/db", tags=["health"])
+def health_db() -> dict:
+    import time
+    from app.db.session import engine
+    from sqlalchemy import text
+
+    start = time.perf_counter()
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        return {"status": "ok", "db_ms": round(elapsed_ms, 1)}
+    except Exception as exc:
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        return {"status": "error", "db_ms": round(elapsed_ms, 1), "error": str(exc)[:200]}
