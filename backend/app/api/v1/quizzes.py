@@ -3,39 +3,17 @@ from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, get_db
 from app.core.rate_limit import enforce_ai_rate_limit
-from app.core.exceptions import safe_error_message
 from app.models.user import User
 from app.schemas.attempt import AttemptRead
 from app.schemas.quiz import (
     GenerationJobRead,
     QuestionPublic,
-    QuizDetail,
     QuizGenerateRequest,
     QuizRead,
 )
 from app.services import attempt_service, quiz_service
 
 router = APIRouter(prefix="/quizzes", tags=["quizzes"])
-
-
-@router.post(
-    "/generate", response_model=QuizDetail, status_code=201, dependencies=[Depends(enforce_ai_rate_limit)]
-)
-async def generate_quiz(
-    payload: QuizGenerateRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> QuizDetail:
-    quiz = await quiz_service.generate_quiz(
-        db,
-        user=current_user,
-        material_id=payload.material_id,
-        material_ids=payload.material_ids,
-        number_of_questions=payload.number_of_questions,
-        difficulty=payload.difficulty,
-        question_types=payload.question_types,
-    )
-    return QuizDetail.model_validate(quiz)
 
 
 @router.post(
