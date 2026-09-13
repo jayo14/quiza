@@ -2,6 +2,7 @@
 makes a real OpenAI call or consumes real credits."""
 
 import json
+from types import SimpleNamespace
 
 from app.ai.llm.base import LLMProvider
 from app.ai.rag.pipeline import RetrievedContext
@@ -43,10 +44,14 @@ async def fake_get_context_for_query(*args, **kwargs) -> RetrievedContext:
 
 
 def generate_quiz_with_fakes(client, headers, *, material_id: str, questions: list[dict], **payload_overrides):
-    """Calls POST /quizzes/generate with the LLM and RAG context mocked out, so no
-    real AI call happens. Returns the raw httpx response."""
+    """Enqueues a quiz via /quizzes/generate-background, executes the Celery task
+    directly (bypassing Redis), and returns the completed job response.
 
+    This exercises the full generation pipeline without requiring a running
+    Celery worker or Redis instance."""
     from unittest.mock import patch
+    from app.tasks import generate_quiz_task
+    from tests.fakes import FakeEmbeddingProvider, fake_get_context_for_query, FakeQuizLLM
 
     payload = {
         "material_id": material_id,
@@ -55,11 +60,45 @@ def generate_quiz_with_fakes(client, headers, *, material_id: str, questions: li
         "question_types": ["multiple_choice", "true_false", "short_answer"],
         **payload_overrides,
     }
+
+    # Step 1: Enqueue via background endpoint (mocks .delay())
+    with patch("app.tasks.generate_quiz_task.delay") as mock_delay:
+        mock_delay.return_value = SimpleNamespace(id="test-task-id")
+        enqueue_resp = client.post("/api/v1/quizzes/generate-background", json=payload, headers=headers)
+
+    assert enqueue_resp.status_code == 202, enqueue_resp.text
+    job = enqueue_resp.json()
+    job_id = job["id"]
+
+    # Step 2: Execute the task directly (synchronously) with AI fakes
+    from app.db.session import SessionLocal
+    from app.models.generation_job import GenerationJob
+    from app.models.enums import GenerationJobStatus
+
+    # Get user_id from the job
+    db = SessionLocal()
+    db_job = db.get(GenerationJob, job_id)
+    user_id = db_job.user_id
+    db.close()
+
     with (
+        patch("app.ai.rag.ingestion.get_embedding_provider", return_value=FakeEmbeddingProvider()),
         patch("app.ai.quiz_generator.get_context_for_query", side_effect=fake_get_context_for_query),
         patch("app.ai.quiz_generator.get_llm_provider", return_value=FakeQuizLLM(questions)),
     ):
-        return client.post("/api/v1/quizzes/generate", json=payload, headers=headers)
+        result = generate_quiz_task(
+            job_id=job_id,
+            user_id=user_id,
+            material_ids=[material_id],
+            question_count=len(questions),
+            difficulty=payload["difficulty"],
+            question_types=payload["question_types"],
+        )
+
+    assert result["status"] == "completed", f"Task failed: {result}"
+
+    # Step 3: Return the job response (matches what the frontend polls)
+    return client.get(f"/api/v1/quizzes/generation-jobs/{job_id}", headers=headers)
 
 
 def true_false_questions(topic: str, count: int, correct_answer: str = "True") -> list[dict]:
