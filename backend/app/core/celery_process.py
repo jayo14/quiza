@@ -36,26 +36,34 @@ def _set_pdeathsig():
 
 
 def start_celery_worker() -> subprocess.Popen | None:
-    """Start Celery worker in a subprocess if not already running."""
+    """Start Celery worker in a subprocess if not already running.
+
+    This is non-blocking and failure-tolerant: if Redis is unreachable or the
+    worker can't be started, the application continues without a local worker.
+    An external worker (e.g. on a separate Render service) can still process
+    tasks from the same broker.
+    """
     global _celery_proc
 
-    if not getattr(settings, "auto_start_celery", True):
-        logger.info("Celery auto-start is disabled via settings.")
+    if not getattr(settings, "auto_start_celery", False):
         return None
 
     if _celery_proc is not None and _celery_proc.poll() is None:
         logger.info("Celery worker subprocess is already running (PID: %d).", _celery_proc.pid)
         return _celery_proc
 
-    # Check if an external Celery worker is already running
-    if is_celery_worker_running():
-        logger.info("Active Celery worker detected on message broker. Subprocess start skipped.")
-        return None
+    # Check if an external Celery worker is already running (short timeout)
+    try:
+        if is_celery_worker_running(timeout=1.0):
+            logger.info("Active Celery worker detected on message broker. Subprocess start skipped.")
+            return None
+    except Exception:
+        pass
 
-    # Check Redis connectivity
+    # Check Redis connectivity with a short timeout
     try:
         import redis
-        kwargs = {}
+        kwargs = {"socket_connect_timeout": 3, "socket_timeout": 3}
         if settings.redis_url.startswith("rediss://"):
             import ssl
             kwargs["ssl_cert_reqs"] = ssl.CERT_NONE
@@ -63,7 +71,8 @@ def start_celery_worker() -> subprocess.Popen | None:
         r.ping()
     except Exception as exc:
         logger.warning(
-            "Redis is not reachable at %s (%s). Celery worker could not be started.",
+            "Redis is not reachable at %s (%s). Celery worker not started. "
+            "Tasks will be processed by any external worker on the same broker.",
             settings.redis_url,
             exc,
         )
