@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -97,13 +98,15 @@ async def run_ingestion_for_material(material_id: str) -> None:
             logger.warning("run_ingestion_for_material: material %s not found", material_id)
             return
 
-        if material.status in (MaterialStatus.PROCESSING, MaterialStatus.READY):
-            logger.info(
-                "run_ingestion_for_material: material %s already %s, skipping",
-                material_id,
-                material.status,
-            )
+        if material.status == MaterialStatus.READY:
+            logger.info("run_ingestion_for_material: material %s already ready, skipping", material_id)
             return
+
+        if material.status == MaterialStatus.PROCESSING:
+            if material.updated_at and (datetime.now(timezone.utc) - material.updated_at).total_seconds() < 300:
+                logger.info("run_ingestion_for_material: material %s already processing, skipping", material_id)
+                return
+            logger.warning("run_ingestion_for_material: material %s stuck in PROCESSING for >5 min, resetting", material_id)
 
         material.status = MaterialStatus.PROCESSING
         db.add(material)

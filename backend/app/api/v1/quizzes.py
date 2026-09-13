@@ -165,7 +165,8 @@ def cancel_generation_job(
     from datetime import datetime, timezone
     from fastapi import HTTPException
     from app.models.generation_job import GenerationJob
-    from app.models.enums import GenerationJobStatus
+    from app.models.enums import GenerationJobStatus, MaterialStatus
+    from app.models.material import Material
     from app.core.exceptions import NotFoundError
     from app.core.celery_app import celery_app
 
@@ -178,6 +179,13 @@ def cancel_generation_job(
 
     if job.celery_task_id:
         celery_app.control.revoke(job.celery_task_id, terminate=True, signal="SIGTERM")
+
+    for mid in (job.material_ids or []):
+        mat = db.get(Material, mid)
+        if mat and mat.user_id == current_user.id and mat.status == MaterialStatus.PROCESSING:
+            mat.status = MaterialStatus.UPLOADED
+            mat.processing_error = None
+            db.add(mat)
 
     job.status = GenerationJobStatus.CANCELLED
     job.current_stage = "cancelled"
