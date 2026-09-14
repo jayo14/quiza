@@ -40,7 +40,7 @@ Quiza is built with a modern full-stack architecture combining high-performance 
 - **Database & Storage**: We used SQLAlchemy 2.0 with Alembic migrations, and chose Supabase to store both raw file uploads and our production vector database using `pgvector` (with SQLite for zero-config local development).
 - **Authentication**: Secure JWT authentication (`python-jose`) with bcrypt password hashing and token refresh cycles.
 - **Document Extractors**: PyMuPDF (`fitz`) for PDF parsing, `python-docx` for document processing, and `pytesseract` for image-to-text OCR.
-- **Background Tasks**: Celery with Redis for async quiz generation, material ingestion, and retry logic with automatic stale-state recovery on startup.
+- **Background Tasks**: Celery with Redis for durable, persistent async job queues. Quiz generation and material ingestion run as Celery tasks that survive server restarts, deploys, and crashes. Jobs track progress through stages (`queued → preparing_materials → reading_materials → finding_relevant_content → saving_quiz → completed`), with automatic stale-state recovery on startup for any jobs stuck in processing beyond 10 minutes.
 
 ### 3. Machine Learning & RAG Engine
 - **Large Language Model (LLM)**: Multi-provider failover chain with automatic cooldown and retry:
@@ -49,7 +49,12 @@ Quiza is built with a modern full-stack architecture combining high-performance 
   - **General fallback**: OpenAI (`gpt-4o-mini`)
   - **Extended fallback**: NVIDIA NIM (`deepseek-ai/deepseek-v4-flash`)
 - **Provider Abstraction**: `LLMProvider` base class with `FailoverLLMProvider` orchestrating ordered failover across providers, with per-model cooldowns, 404/410 detection for deprecated models, and rate-limit-aware retry.
-- **Embeddings & Vector Search**: Google Gemini Embeddings with pluggable vector stores (`VectorStore`).
+- **Idempotent RAG Ingestion Pipeline**: Material ingestion (parse → chunk → embed → store) is designed to be safe and idempotent:
+  - **Status gating**: Materials in `READY` state are skipped entirely—re-uploading or regenerating from the same file never re-chunks or re-embeds, saving API costs and preventing duplicate vectors.
+  - **Stuck recovery**: Materials stuck in `PROCESSING` for >5 minutes are automatically reset and re-queued.
+  - **Atomic writes**: Chunks and embeddings are flushed together in a single transaction—if any step fails, the material rolls back to `FAILED` with a clear error message, and no partial data persists.
+  - **Error isolation**: Ingestion errors never crash the worker; they leave the material in a `failed` state with an explanation the UI can display.
+- **Embeddings & Vector Search**: Google Gemini Embeddings with pluggable vector stores (`VectorStore`). Chunks are embedded in batch, with vector dimension normalization (truncate/pad) to handle model mismatches gracefully.
 - **Mathematical Grounding & Cosine Distance**:
   Documents are chunked into semantic snippets $\mathbf{d}_i$ and embedded into vector space $\mathbb{R}^d$. Given a prompt or query chunk $\mathbf{q}$, similarity search measures cosine similarity:
 
@@ -80,8 +85,8 @@ Quiza is built with a modern full-stack architecture combining high-performance 
 - **Adblocker Interception**: Browser extensions blocked root `/health` requests (`ERR_BLOCKED_BY_CLIENT`). We introduced API-scoped ping endpoints (`/api/v1/ping`) and graceful client-side fallback handling.
 - **NVIDIA NIM Model Deprecation**: NVIDIA NIM models like `meta/llama-3.3-70b-instruct` reached end-of-life and returned 410 errors. We built permanent-error detection (`_is_permanent_model_error`) that recognizes 404/410 status codes and "end of life" messages, placing deprecated models on 24-hour cooldowns and failing over to the next provider instantly.
 - **Multi-Provider Failover Complexity**: Each LLM provider (Gemini, Groq, OpenAI, NVIDIA NIM) has different rate limits, error formats, and retry semantics. We implemented a centralized `classify_error()` system that normalizes errors across providers and routes retry decisions, plus per-model cooldowns with exponential backoff for rate-limited endpoints.
-- **React Hooks Ordering Violation**: A `useMemo` hook placed after an early return caused "Rendered more hooks than during the previous render" crashes. We replaced it with a plain IIFE since the computation was a simple derivation that didn't benefit from memoization.
 - **Celery Worker Reliability**: Quiz generation jobs sometimes got stuck in "queued" state when the Celery worker crashed or Redis was unreachable. We added stale-state recovery on startup, client-side timeout detection for queued jobs, and a restart/cancel UX for jobs stuck beyond 30 seconds.
+- **Evolution of Background Processing**: Quiz generation started as synchronous FastAPI request handlers that blocked until completion. We moved to FastAPI `BackgroundTasks` for non-blocking responses, but hit limitations—no persistence across deploys, no retry on crash, no visibility into job state. We finally settled on Celery + Redis for durable task queues with automatic retries, stale-state recovery, and per-job progress tracking.
 
 ---
 
@@ -105,8 +110,9 @@ Quiza is built with a modern full-stack architecture combining high-performance 
 - Strict Pydantic schema validation is key to reliably consuming structured outputs from LLMs in production.
 - **Provider deprecation is inevitable**: NVIDIA NIM models went end-of-life mid-development. Building permanent-error detection (404/410 + message matching) with extended cooldowns prevents wasted retry cycles on dead models.
 - **Rate limits vary wildly across providers**: Groq returns `retry-after` headers, OpenAI returns credit-exhaustion errors, Gemini returns `RESOURCE_EXHAUSTED`. A unified error classifier with provider-specific retry parsing is essential for reliable multi-provider systems.
-- **React hooks ordering is strict**: Placing hooks after early returns causes cryptic crashes. Always place all hooks at the top level, and prefer plain variables over `useMemo` for simple derivations.
 - **Background task reliability needs defense in depth**: Celery workers crash, Redis drops connections, and jobs get stuck. Startup recovery, client-side timeout detection, and user-initiated restart paths all work together to prevent silent failures.
+- **Idempotent ingestion saves cost and time**: Chunking and embedding are expensive—API calls per chunk, vector writes per record. By checking material status before reprocessing and skipping already-ready materials, we avoid redundant embedding calls and prevent duplicate chunk records. The same file uploaded twice never gets re-embedded.
+- **Durable queues beat in-process tasks**: FastAPI `BackgroundTasks` vanish on process restart. Celery + Redis survive deploys, crashes, and scaling events—critical for a quiz generation pipeline that can take minutes per job.
 
 ---
 
