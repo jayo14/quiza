@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timezone
 
@@ -86,17 +87,25 @@ def generate_quiz_task(
         if any(material is None or material.user_id != user_id for material in materials):
             raise ValueError("One or more selected materials could not be found.")
 
-        for index, material in enumerate(materials):
-            if material.status != MaterialStatus.READY:
-                run_async(run_ingestion_for_material(material.id))
-            update_job("reading_materials", 10 + int((index + 1) / len(materials) * 30))
+        pending = [m for m in materials if m.status != MaterialStatus.READY]
+        if pending:
+            update_job("reading_materials", 10)
+            coros = [run_ingestion_for_material(m.id) for m in pending]
+            run_async(asyncio.gather(*coros, return_exceptions=True))
+            db.expire_all()
+            materials = [db.get(Material, material_id) for material_id in material_ids]
+        update_job("reading_materials", 40)
 
         db.expire_all()
         materials = [db.get(Material, material_id) for material_id in material_ids]
         failed = [material for material in materials if material.status == MaterialStatus.FAILED]
         if failed:
+            details = []
+            for m in failed:
+                reason = m.processing_error or "unknown error"
+                details.append(f"{m.filename}: {reason}")
             raise ValueError(
-                "Material processing failed: " + ", ".join(material.filename for material in failed)
+                "Material processing failed:\n" + "\n".join(details)
             )
         if any(material.status != MaterialStatus.READY for material in materials):
             raise ValueError("Selected materials are not ready for generation.")

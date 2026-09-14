@@ -20,8 +20,8 @@ _GEMINI_EMBEDDING_DIMENSIONS = {
     "embedding-001": 768,
 }
 
-_EMBED_BATCH_SIZE = 20
-_EMBED_BATCH_DELAY = 1.5  # seconds between batches
+_EMBED_BATCH_SIZE = 100
+_EMBED_BATCH_DELAY = 0.5  # seconds between batches
 _MAX_RETRIES_PER_MODEL = 3
 _MAX_RETRIES_QUOTA_EXHAUSTED = 5
 
