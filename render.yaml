@@ -44,7 +44,7 @@ services:
       - key: REDIS_URL
         sync: false
       - key: AUTO_START_CELERY
-        value: "true"
+        value: "false"
       - key: CORS_ORIGINS
         value: "*"
 

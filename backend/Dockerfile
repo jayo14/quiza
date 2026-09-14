@@ -1,9 +1,13 @@
 FROM python:3.12-slim
 
 # tesseract-ocr: OCR for uploaded images. libgl1: PyMuPDF's runtime dependency.
+# supervisor: process manager for uvicorn + celery.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     libgl1 \
+    supervisor \
+    && rm -rf /var/log/supervisor \
+    && mkdir -p /var/log/supervisor \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
