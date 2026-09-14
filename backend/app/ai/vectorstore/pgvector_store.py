@@ -3,7 +3,12 @@ from sqlalchemy.orm import Session
 
 from app.ai.vectorstore.base import EmbeddingRecord, SearchResult, VectorStore
 
-EMBEDDING_DIMENSION = 3072
+
+def _get_embedding_dimension() -> int:
+    from app.ai.embeddings.service import _GEMINI_EMBEDDING_DIMENSIONS
+    from app.core.config import settings
+    model = settings.gemini_embedding_model
+    return _GEMINI_EMBEDDING_DIMENSIONS.get(model, 768)
 
 
 class PgVectorStore(VectorStore):
@@ -28,10 +33,11 @@ class PgVectorStore(VectorStore):
         self._db = db
 
     def add_many(self, records: list[EmbeddingRecord], *, commit: bool = True) -> None:
+        expected_dim = _get_embedding_dimension()
         for record in records:
-            if len(record.embedding) != EMBEDDING_DIMENSION:
+            if len(record.embedding) != expected_dim:
                 raise ValueError(
-                    f"Embedding dimension mismatch: expected {EMBEDDING_DIMENSION}, got {len(record.embedding)}"
+                    f"Embedding dimension mismatch: expected {expected_dim}, got {len(record.embedding)}"
                 )
             self._db.execute(
                 text(
