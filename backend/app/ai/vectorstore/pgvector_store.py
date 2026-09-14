@@ -35,10 +35,12 @@ class PgVectorStore(VectorStore):
     def add_many(self, records: list[EmbeddingRecord], *, commit: bool = True) -> None:
         expected_dim = _get_embedding_dimension()
         for record in records:
-            if len(record.embedding) != expected_dim:
-                raise ValueError(
-                    f"Embedding dimension mismatch: expected {expected_dim}, got {len(record.embedding)}"
-                )
+            emb = record.embedding
+            # Truncate or zero-pad to expected dimension
+            if len(emb) > expected_dim:
+                emb = emb[:expected_dim]
+            elif len(emb) < expected_dim:
+                emb = emb + [0.0] * (expected_dim - len(emb))
             self._db.execute(
                 text(
                     """
@@ -51,7 +53,7 @@ class PgVectorStore(VectorStore):
                     "chunk_id": record.chunk_id,
                     "material_id": record.material_id,
                     "user_id": record.user_id,
-                    "embedding": record.embedding,
+                    "embedding": emb,
                 },
             )
         if commit:

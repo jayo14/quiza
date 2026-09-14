@@ -23,6 +23,7 @@ _GEMINI_EMBEDDING_DIMENSIONS = {
 
 _EMBED_BATCH_SIZE = 20
 _EMBED_BATCH_DELAY = 1.0  # seconds between batches
+TARGET_EMBEDDING_DIMS = 768
 _MAX_RETRIES_PER_MODEL = 3
 _MAX_RETRIES_QUOTA_EXHAUSTED = 5
 
@@ -70,6 +71,15 @@ def _mark_quota_exhausted(model: str) -> None:
 
 def _is_quota_exhausted(model: str) -> bool:
     return time.time() < _quota_exhausted_models.get(model, 0.0)
+
+
+def _normalize_embedding(embedding: list[float], target_dims: int) -> list[float]:
+    """Truncate or zero-pad an embedding to exactly target_dims dimensions."""
+    if len(embedding) == target_dims:
+        return embedding
+    if len(embedding) > target_dims:
+        return embedding[:target_dims]
+    return embedding + [0.0] * (target_dims - len(embedding))
 
 
 def _get_fallback_models(primary: str) -> list[str]:
@@ -121,16 +131,13 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
         if raw_embeddings is None and getattr(response, "embedding", None) is not None:
             raw_embeddings = [response.embedding]
         values = [list(item.values) for item in (raw_embeddings or []) if getattr(item, "values", None)]
-        expected_dims = _GEMINI_EMBEDDING_DIMENSIONS.get(target_model, 0)
         if len(values) != len(texts):
             raise AIServiceError(
                 f"The AI provider returned {len(values)} embeddings for {len(texts)} documents."
             )
-        for embedding in values:
-            if expected_dims and len(embedding) != expected_dims:
-                raise AIServiceError(
-                    f"Embedding dimension mismatch: expected {expected_dims}, got {len(embedding)}"
-                )
+        # Normalize dimensions: truncate or pad to TARGET_EMBEDDING_DIMS
+        for i, embedding in enumerate(values):
+            values[i] = _normalize_embedding(embedding, TARGET_EMBEDDING_DIMS)
         return values
 
     async def _try_embed_with_model(self, texts: list[str], model: str) -> list[list[float]]:
