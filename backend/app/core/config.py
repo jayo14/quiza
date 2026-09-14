@@ -136,8 +136,8 @@ def get_settings() -> Settings:
         raise RuntimeError(
             "JWT_SECRET_KEY must be overridden with a real secret in production."
         )
-    if not settings.gemini_api_key and not settings.openai_api_key and not settings.nvidia_api_key:
-        _logger.warning("No LLM API keys configured (gemini, openai, nvidia). AI features will fail.")
+    if not settings.gemini_api_key and not settings.groq_api_key and not settings.openai_api_key and not settings.nvidia_api_key:
+        _logger.warning("No LLM API keys configured (gemini, groq, openai, nvidia). AI features will fail.")
     return settings
 
 
