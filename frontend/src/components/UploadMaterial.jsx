@@ -172,6 +172,7 @@ function UploadMaterial() {
   const [isRetryingJob, setIsRetryingJob] = useState(false);
   const [isCancellingJob, setIsCancellingJob] = useState(false);
   const [isStartingQuiz, setIsStartingQuiz] = useState(false);
+  const [queuedSince, setQueuedSince] = useState(null);
 
   const pollJob = useCallback(async function pollGenerationJob(jobId) {
     try {
@@ -394,6 +395,7 @@ function UploadMaterial() {
         question_types: ["multiple_choice", "true_false"],
       });
       setJob(created);
+      setQueuedSince(Date.now());
       toast.info("Quiz generation started. You can safely leave this page.");
       pollJob(created.id);
     } catch (err) {
@@ -428,6 +430,7 @@ function UploadMaterial() {
         });
       }
       setJob(retriedJob);
+      setQueuedSince(Date.now());
       toast.info("Quiz generation restarted.");
       pollJob(retriedJob.id);
     } catch (err) {
@@ -478,6 +481,10 @@ function UploadMaterial() {
   const stageFriendlyText = (() => {
     if (!job) return "";
     if (job.status === "queued") {
+      const queuedSeconds = queuedSince ? Math.floor((Date.now() - queuedSince) / 1000) : 0;
+      if (queuedSeconds > 60) {
+        return "Taking longer than expected · Worker may need a moment to start";
+      }
       return "Waiting for worker to start · Connecting to engine";
     }
     const friendly = {
@@ -868,6 +875,42 @@ function UploadMaterial() {
                 </>
               )}
             </button>
+          )}
+          {job.status === "queued" && queuedSince && (Date.now() - queuedSince) > 30000 && (
+            <div className="upload-material__job-stuck-notice">
+              <p className="upload-material__error">
+                Job has been queued for a while. This might indicate a worker issue.
+              </p>
+              <div className="upload-material__job-action-buttons">
+                <button
+                  type="button"
+                  className="upload-material__retry-job-btn"
+                  onClick={handleRetryJob}
+                  disabled={isRetryingJob}
+                >
+                  {isRetryingJob ? (
+                    <>
+                      <Loader2 size={15} className="upload-material__spin" />
+                      <span>Restarting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw size={15} />
+                      <span>Restart Generation</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="upload-material__cancel-job-btn"
+                  onClick={handleCancelJob}
+                  disabled={isCancellingJob}
+                  style={{ marginTop: 0 }}
+                >
+                  <span>Cancel</span>
+                </button>
+              </div>
+            </div>
           )}
           {job.status === "completed" && job.quiz_id && (
             <button
