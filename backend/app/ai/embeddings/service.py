@@ -14,14 +14,15 @@ from app.core.exceptions import AIServiceError
 logger = logging.getLogger(__name__)
 
 _GEMINI_EMBEDDING_DIMENSIONS = {
-    "gemini-embedding-001": 3072,
-    "gemini-embedding-2": 3072,
+    "gemini-embedding-001": 768,
+    "gemini-embedding-2": 768,
+    "gemini-embedding-2-preview": 768,
     "text-embedding-004": 768,
     "embedding-001": 768,
 }
 
-_EMBED_BATCH_SIZE = 100
-_EMBED_BATCH_DELAY = 0.5  # seconds between batches
+_EMBED_BATCH_SIZE = 20
+_EMBED_BATCH_DELAY = 1.0  # seconds between batches
 _MAX_RETRIES_PER_MODEL = 3
 _MAX_RETRIES_QUOTA_EXHAUSTED = 5
 
@@ -114,6 +115,7 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
         response = await client.aio.models.embed_content(
             model=target_model,
             contents=texts,
+            config={"output_dimensionality": 768},
         )
         raw_embeddings = getattr(response, "embeddings", None)
         if raw_embeddings is None and getattr(response, "embedding", None) is not None:

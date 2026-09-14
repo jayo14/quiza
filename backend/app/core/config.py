@@ -30,9 +30,9 @@ class Settings(BaseSettings):
     # Gemini
     gemini_api_key: str | None = None
     gemini_chat_model: str = "gemini-3.6-flash"
-    gemini_fallback_models: str = "gemini-2.5-flash,gemini-1.5-flash,gemini-2.5-pro"
-    gemini_embedding_model: str = "text-embedding-004"
-    gemini_embedding_fallback_models: str = "gemini-embedding-001,gemini-embedding-2"
+    gemini_fallback_models: str = "gemini-3.8-flash,gemini-3.5-flash,gemini-3.1-pro-preview"
+    gemini_embedding_model: str = "gemini-embedding-001"
+    gemini_embedding_fallback_models: str = "gemini-embedding-2"
 
     # OpenAI
     openai_api_key: str | None = None
