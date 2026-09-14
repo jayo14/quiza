@@ -56,6 +56,10 @@ async def generate_quiz_background(
     db.commit()
     db.refresh(job)
 
+    from app.core.celery_process import ensure_celery_worker
+
+    ensure_celery_worker()
+
     try:
         task_result = generate_quiz_task.delay(
             job_id=job.id,
@@ -119,10 +123,13 @@ def retry_generation_job(
     from app.models.enums import GenerationJobStatus
     from app.core.exceptions import NotFoundError
     from app.tasks import generate_quiz_task
+    from app.core.celery_process import ensure_celery_worker
 
     job = db.get(GenerationJob, job_id)
     if not job or job.user_id != current_user.id:
         raise NotFoundError("Generation job not found.")
+
+    ensure_celery_worker()
 
     job.status = GenerationJobStatus.QUEUED
     job.progress = 0
@@ -162,6 +169,7 @@ def cancel_generation_job(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> GenerationJobRead:
+    import logging
     from datetime import datetime, timezone
     from fastapi import HTTPException
     from app.models.generation_job import GenerationJob
@@ -178,7 +186,10 @@ def cancel_generation_job(
         raise HTTPException(status_code=400, detail="Job is not active and cannot be cancelled.")
 
     if job.celery_task_id:
-        celery_app.control.revoke(job.celery_task_id, terminate=True, signal="SIGTERM")
+        try:
+            celery_app.control.revoke(job.celery_task_id, terminate=False)
+        except Exception as exc:
+            logging.getLogger(__name__).warning("Failed to revoke Celery task %s: %s", job.celery_task_id, exc)
 
     for mid in (job.material_ids or []):
         mat = db.get(Material, mid)

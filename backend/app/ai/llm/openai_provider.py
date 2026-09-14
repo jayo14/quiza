@@ -69,6 +69,20 @@ class OpenAIProvider(LLMProvider):
             int(cooldown),
         )
 
+    def _is_permanent_model_error(self, exc: Exception) -> bool:
+        msg = str(exc).lower()
+        status = getattr(exc, "status_code", None) or getattr(exc, "status", None)
+        return (
+            status in (404, 410)
+            or "404" in msg
+            or "410" in msg
+            or "not found" in msg
+            or "end of life" in msg
+            or "no longer available" in msg
+            or "does not exist" in msg
+            or "model_not_found" in msg
+        )
+
     def _is_transient_or_demand_error(self, exc: Exception) -> bool:
         msg = str(exc).lower()
         transient_indicators = [
@@ -121,7 +135,13 @@ class OpenAIProvider(LLMProvider):
                 return content
             except Exception as exc:
                 last_error = exc
-                if self._is_transient_or_demand_error(exc):
+                if self._is_permanent_model_error(exc):
+                    self._set_cooldown(model, 86400.0)
+                    logger.warning(
+                        "OpenAI model %s returned 404/410 (model deprecated or not found). Cooldown 24h. Falling over...",
+                        model,
+                    )
+                elif self._is_transient_or_demand_error(exc):
                     retry_delay = parse_retry_delay(exc)
                     self._set_cooldown(model, retry_delay)
                     logger.warning(

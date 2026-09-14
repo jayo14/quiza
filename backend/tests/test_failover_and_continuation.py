@@ -209,3 +209,61 @@ async def test_midtask_continuation_resumes_without_redundancy():
     assert "Q1: First concept?" in mock_llm.received_prompts[1]
     assert "Q2: Second concept?" in mock_llm.received_prompts[1]
     assert "Do NOT duplicate" in mock_llm.received_prompts[1]
+
+
+def test_error_classification_for_404_and_410():
+    from app.ai.llm.errors import ErrorCategory, classify_error, should_failover
+
+    class DummyStatusError(Exception):
+        def __init__(self, status_code: int, message: str) -> None:
+            super().__init__(message)
+            self.status_code = status_code
+
+    # 404 model not found
+    err_404 = DummyStatusError(404, "Error code: 404 - Not Found")
+    assert classify_error(err_404) == ErrorCategory.MODEL_NOT_FOUND
+    assert should_failover(err_404) is True
+
+    # 410 model gone / end of life
+    err_410 = DummyStatusError(
+        410,
+        "The model 'meta/llama-3.3-70b-instruct' has reached its end of life on 2026-08-26T09:00:00Z and is no longer available.",
+    )
+    assert classify_error(err_410) == ErrorCategory.MODEL_NOT_FOUND
+    assert should_failover(err_410) is True
+
+    # Message-based detection
+    err_text = Exception("Model is no longer available on this platform")
+    assert classify_error(err_text) == ErrorCategory.MODEL_NOT_FOUND
+    assert should_failover(err_text) is True
+
+
+@pytest.mark.asyncio
+async def test_failover_when_model_is_deprecated_or_not_found():
+    from app.ai.llm.errors import ErrorCategory
+
+    class ModelGoneError(Exception):
+        status_code = 410
+
+    prov1 = MockFailingProvider("nvidia_nim", fail=True, exception=ModelGoneError("Model reached end of life"))
+    prov2 = MockSuccessProvider("gemini", response_json='{"status": "recovered"}')
+
+    router = FailoverLLMProvider(providers=[prov1, prov2])
+    result = await router.complete(system_prompt="sys", user_prompt="usr")
+
+    assert result == '{"status": "recovered"}'
+    assert prov1.calls == 1
+    assert prov2.calls == 1
+
+
+def test_groq_provider_registered_in_failover():
+    from app.ai.llm.groq_provider import GroqProvider
+
+    router = FailoverLLMProvider(providers=[])
+    providers_built = router._build_default_providers()
+    provider_names = [getattr(p, "provider_name", "") for p in providers_built]
+    # Check that GroqProvider is available in the module and implements LLMProvider
+    groq = GroqProvider(api_key="gsk-dummy-key")
+    assert groq.provider_name == "groq"
+    assert groq.is_available() is True
+

@@ -198,3 +198,63 @@ def test_retry_generation_job(client, signup):
         assert retried["status"] == "queued"
         assert retried["progress"] == 0
         mock_delay.assert_called_once()
+
+
+def test_cancel_and_retry_generation_job(client, signup):
+    headers, user_body = signup(email="cancel-job@example.com")
+    mat = _upload(client, headers, "cancel_mat.txt").json()
+
+    with patch(
+        "app.tasks.generate_quiz_task.delay",
+        return_value=SimpleNamespace(id="celery-task-cancel-1"),
+    ):
+        post_job = client.post(
+            "/api/v1/quizzes/generate-background",
+            json={
+                "material_ids": [mat["id"]],
+                "question_count": 5,
+                "difficulty": "easy",
+                "question_types": ["multiple_choice"],
+            },
+            headers=headers,
+        )
+    assert post_job.status_code == 202
+    job_id = post_job.json()["id"]
+
+    # Cancel the job
+    with patch("app.core.celery_app.celery_app.control.revoke") as mock_revoke:
+        cancel_resp = client.post(
+            f"/api/v1/quizzes/generation-jobs/{job_id}/cancel",
+            headers=headers,
+        )
+        assert cancel_resp.status_code == 200
+        cancelled_data = cancel_resp.json()
+        assert cancelled_data["status"] == "cancelled"
+        mock_revoke.assert_called_once_with("celery-task-cancel-1", terminate=False)
+
+    # Verify generate_quiz_task aborts cleanly if job is cancelled
+    from app.tasks import generate_quiz_task
+    task_res = generate_quiz_task(
+        job_id=job_id,
+        user_id=user_body["id"],
+        material_ids=[mat["id"]],
+        question_count=5,
+        difficulty="easy",
+        question_types=["multiple_choice"],
+    )
+    assert task_res["status"] == "cancelled"
+
+    # Retry the cancelled job
+    with patch(
+        "app.tasks.generate_quiz_task.delay",
+        return_value=SimpleNamespace(id="celery-task-cancel-retried"),
+    ) as mock_delay:
+        retry_resp = client.post(
+            f"/api/v1/quizzes/generation-jobs/{job_id}/retry",
+            headers=headers,
+        )
+        assert retry_resp.status_code == 202
+        retried = retry_resp.json()
+        assert retried["status"] == "queued"
+        mock_delay.assert_called_once()
+

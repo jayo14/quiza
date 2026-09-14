@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def parse_retry_delay(exc: Exception) -> float | None:
-    """Extract retry-after or retry delay from error responses."""
+    """Extract retry-after or retry delay from Groq error responses."""
     msg = str(exc)
     match = re.search(r"retry[_-]?after['\"]?\s*[:=]\s*['\"]?(\d+)", msg, re.IGNORECASE)
     if match:
@@ -23,7 +23,9 @@ def parse_retry_delay(exc: Exception) -> float | None:
     return None
 
 
-class NvidiaNIMProvider(LLMProvider):
+class GroqProvider(LLMProvider):
+    """LLM Provider for Groq high-speed inference API (OpenAI-compatible)."""
+
     def __init__(
         self,
         api_key: str | None = None,
@@ -31,14 +33,14 @@ class NvidiaNIMProvider(LLMProvider):
         model: str | None = None,
         fallback_models: list[str] | None = None,
     ) -> None:
-        self._api_key = api_key or settings.nvidia_api_key
-        self._base_url = base_url or settings.nvidia_base_url
-        self.primary_model = model or settings.nvidia_chat_model
+        self._api_key = api_key or settings.groq_api_key
+        self._base_url = base_url or settings.groq_base_url
+        self.primary_model = model or settings.groq_chat_model
 
         if fallback_models is not None:
             self.fallback_models = fallback_models
         else:
-            configured = [m.strip() for m in settings.nvidia_fallback_models.split(",") if m.strip()]
+            configured = [m.strip() for m in settings.groq_fallback_models.split(",") if m.strip()]
             self.fallback_models = [m for m in configured if m != self.primary_model]
 
         self.models = [self.primary_model] + [m for m in self.fallback_models if m != self.primary_model]
@@ -51,7 +53,7 @@ class NvidiaNIMProvider(LLMProvider):
 
     @property
     def provider_name(self) -> str:
-        return "nvidia_nim"
+        return "groq"
 
     def is_available(self) -> bool:
         return bool(self._api_key)
@@ -64,7 +66,7 @@ class NvidiaNIMProvider(LLMProvider):
         cooldown = duration or float(settings.llm_model_cooldown_seconds)
         self._cooldowns[model] = time.time() + cooldown
         logger.warning(
-            "NVIDIA NIM model '%s' placed in cooldown for %ds due to overload/exhaustion.",
+            "Groq model '%s' placed in cooldown for %ds due to overload/exhaustion.",
             model,
             int(cooldown),
         )
@@ -80,6 +82,7 @@ class NvidiaNIMProvider(LLMProvider):
             or "end of life" in msg
             or "no longer available" in msg
             or "does not exist" in msg
+            or "model_not_found" in msg
         )
 
     def _is_transient_or_demand_error(self, exc: Exception) -> bool:
@@ -90,6 +93,7 @@ class NvidiaNIMProvider(LLMProvider):
             "429",
             "rate_limit",
             "rate limit",
+            "insufficient_quota",
             "quota",
             "server_error",
             "timeout",
@@ -98,7 +102,7 @@ class NvidiaNIMProvider(LLMProvider):
 
     async def complete(self, *, system_prompt: str, user_prompt: str) -> str:
         if not self.is_available() or self._client is None:
-            raise AIServiceError("NVIDIA NIM API key is not configured.")
+            raise AIServiceError("Groq API key is not configured.")
 
         candidate_models = [m for m in self.models if not self._is_cooling_down(m)]
         if not candidate_models:
@@ -106,7 +110,7 @@ class NvidiaNIMProvider(LLMProvider):
             earliest_expiry = self._cooldowns.get(sorted_models[0], 0.0)
             wait_time = max(0.0, earliest_expiry - time.time())
             if wait_time < 120:
-                logger.info("All NVIDIA NIM models in cooldown. Waiting %.1fs for earliest expiry...", wait_time)
+                logger.info("All Groq models in cooldown. Waiting %.1fs for earliest expiry...", wait_time)
                 await asyncio.sleep(wait_time)
                 candidate_models = [m for m in self.models if not self._is_cooling_down(m)]
             if not candidate_models:
@@ -115,9 +119,9 @@ class NvidiaNIMProvider(LLMProvider):
         last_error: Exception | None = None
 
         for model in candidate_models:
-            logger.info("Attempting completion with NVIDIA NIM model: %s", model)
+            logger.info("Attempting completion with Groq model: %s", model)
             try:
-                # Some NIM models support response_format json_object, try with it or fallback gracefully
+                # Attempt with response_format json_object first
                 try:
                     response = await self._client.chat.completions.create(
                         model=model,
@@ -144,30 +148,30 @@ class NvidiaNIMProvider(LLMProvider):
                 choice = response.choices[0]
                 content = choice.message.content
                 if not content:
-                    raise AIServiceError(f"NVIDIA NIM model {model} returned an empty response.")
+                    raise AIServiceError(f"Groq model {model} returned an empty response.")
                 return content
             except Exception as exc:
                 last_error = exc
                 if self._is_permanent_model_error(exc):
                     self._set_cooldown(model, 86400.0)
                     logger.warning(
-                        "NVIDIA NIM model %s returned 404/410 (model deprecated or gone). Placing on extended cooldown (24h). Falling over...",
+                        "Groq model %s returned 404/410 (model deprecated or not found). Cooldown 24h. Falling over...",
                         model,
                     )
                 elif self._is_transient_or_demand_error(exc):
                     retry_delay = parse_retry_delay(exc)
                     self._set_cooldown(model, retry_delay)
                     logger.warning(
-                        "NVIDIA NIM model %s failed with transient error (%s). Cooldown %ds. Falling over...",
+                        "Groq model %s failed with transient error (%s). Cooldown %ds. Falling over...",
                         model,
                         exc,
                         int(retry_delay or settings.llm_model_cooldown_seconds),
                     )
                 else:
                     logger.warning(
-                        "NVIDIA NIM model %s failed with error (%s). Trying next fallback model...",
+                        "Groq model %s failed with error (%s). Trying next fallback model...",
                         model,
                         exc,
                     )
 
-        raise AIServiceError(f"All NVIDIA NIM models failed: {last_error}") from last_error
+        raise AIServiceError(f"All Groq models failed: {last_error}") from last_error

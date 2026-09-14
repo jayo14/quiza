@@ -109,8 +109,8 @@ async def generate_quiz_questions(
     provider = llm or get_llm_provider()
     ctx_mgr = GenerationContextManager(target_count=number_of_questions)
 
-    # Scale rounds with target count: 1 round for ≤10 questions, 2 for ≤20, 3 for more
-    max_rounds = 1 if number_of_questions <= 10 else (2 if number_of_questions <= 20 else 3)
+    # Scale rounds with target count: allow at least 2 rounds for continuation
+    max_rounds = 2 if number_of_questions <= 10 else (3 if number_of_questions <= 20 else 4)
     for _ in range(max_rounds):
         if ctx_mgr.is_complete:
             break

@@ -60,11 +60,16 @@ def generate_quiz_task(
     db = SessionLocal()
     job = None
 
-    def update_job(stage: str, progress: int) -> None:
+    def update_job(stage: str, progress: int) -> bool:
+        db.refresh(job)
+        if job.status == GenerationJobStatus.CANCELLED:
+            logger.info("Generation job %s cancelled by user; aborting at stage %s.", job_id, stage)
+            return False
         job.current_stage = stage
         job.progress = progress
         db.add(job)
         db.commit()
+        return True
 
     try:
         job = db.get(GenerationJob, job_id)
@@ -72,6 +77,9 @@ def generate_quiz_task(
             return {"status": "error", "message": "Generation job not found"}
         if job.status == GenerationJobStatus.COMPLETED:
             return {"status": "already_completed", "job_id": job_id, "quiz_id": job.quiz_id}
+        if job.status == GenerationJobStatus.CANCELLED:
+            logger.info("Generation job %s was already cancelled. Aborting task.", job_id)
+            return {"status": "cancelled", "job_id": job_id}
         if job.status == GenerationJobStatus.PROCESSING:
             return {"status": "already_processing", "job_id": job_id}
 
@@ -82,20 +90,23 @@ def generate_quiz_task(
         db.add(job)
         db.commit()
 
-        update_job("preparing_materials", 5)
+        if not update_job("preparing_materials", 5):
+            return {"status": "cancelled", "job_id": job_id}
         materials = [db.get(Material, material_id) for material_id in material_ids]
         if any(material is None or material.user_id != user_id for material in materials):
             raise ValueError("One or more selected materials could not be found.")
 
         pending = [m for m in materials if m.status != MaterialStatus.READY]
         if pending:
-            update_job("reading_materials", 10)
+            if not update_job("reading_materials", 10):
+                return {"status": "cancelled", "job_id": job_id}
             coros = [run_ingestion_for_material(m.id) for m in pending]
             run_async_gather(coros)
 
         db.expire_all()
         materials = [db.get(Material, material_id) for material_id in material_ids]
-        update_job("reading_materials", 40)
+        if not update_job("reading_materials", 40):
+            return {"status": "cancelled", "job_id": job_id}
         failed = [material for material in materials if material.status == MaterialStatus.FAILED]
         if failed:
             details = []
@@ -109,7 +120,8 @@ def generate_quiz_task(
             raise ValueError("Selected materials are not ready for generation.")
 
         primary = materials[0]
-        update_job("finding_relevant_content", 50)
+        if not update_job("finding_relevant_content", 50):
+            return {"status": "cancelled", "job_id": job_id}
         generated = run_async(
             generate_quiz_questions(
                 db,
@@ -130,7 +142,8 @@ def generate_quiz_task(
 
         effective_count = len(generated)
 
-        update_job("saving_quiz", 90)
+        if not update_job("saving_quiz", 90):
+            return {"status": "cancelled", "job_id": job_id}
         title = f"Quiz: {primary.title}" if len(materials) == 1 else f"Multi-Material Quiz ({len(materials)} sources)"
         quiz = Quiz(
             user_id=user_id,
@@ -159,6 +172,12 @@ def generate_quiz_task(
                 for index, question in enumerate(generated)
             ]
         )
+        db.refresh(job)
+        if job.status == GenerationJobStatus.CANCELLED:
+            logger.info("Generation job %s was cancelled before commit.", job_id)
+            db.rollback()
+            return {"status": "cancelled", "job_id": job_id}
+
         job.quiz_id = quiz.id
         job.status = GenerationJobStatus.COMPLETED
         job.progress = 100
@@ -182,6 +201,9 @@ def generate_quiz_task(
         if job is None:
             job = db.get(GenerationJob, job_id)
         if job:
+            if job.status == GenerationJobStatus.CANCELLED:
+                logger.info("Generation job %s was cancelled. Preserving cancelled status.", job_id)
+                return {"status": "cancelled", "job_id": job_id}
             job.status = GenerationJobStatus.FAILED
             job.current_stage = "failed"
             job.error_message = safe_error_message(exc)

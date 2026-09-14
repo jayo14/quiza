@@ -45,7 +45,7 @@ def start_celery_worker() -> subprocess.Popen | None:
     """
     global _celery_proc
 
-    if not getattr(settings, "auto_start_celery", False):
+    if not getattr(settings, "auto_start_celery", False) or getattr(settings, "app_env", "") == "test":
         return None
 
     if _celery_proc is not None and _celery_proc.poll() is None:
@@ -122,3 +122,8 @@ def stop_celery_worker() -> None:
         finally:
             _celery_proc = None
         logger.info("Celery worker shutdown complete.")
+
+
+def ensure_celery_worker() -> subprocess.Popen | None:
+    """Ensure a Celery worker is running, starting one if needed and configured."""
+    return start_celery_worker()
