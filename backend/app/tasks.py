@@ -92,12 +92,10 @@ def generate_quiz_task(
             update_job("reading_materials", 10)
             coros = [run_ingestion_for_material(m.id) for m in pending]
             run_async(asyncio.gather(*coros, return_exceptions=True))
-            db.expire_all()
-            materials = [db.get(Material, material_id) for material_id in material_ids]
-        update_job("reading_materials", 40)
 
         db.expire_all()
         materials = [db.get(Material, material_id) for material_id in material_ids]
+        update_job("reading_materials", 40)
         failed = [material for material in materials if material.status == MaterialStatus.FAILED]
         if failed:
             details = []
