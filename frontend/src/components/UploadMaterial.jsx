@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -475,7 +475,7 @@ function UploadMaterial() {
   const stageLabel = job?.current_stage
     ?.replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
-  const stageFriendlyText = useMemo(() => {
+  const stageFriendlyText = (() => {
     if (!job) return "";
     if (job.status === "queued") {
       return "Waiting for worker to start · Connecting to engine";
@@ -487,7 +487,7 @@ function UploadMaterial() {
       saving_quiz: "Finalizing and saving your quiz",
     };
     return friendly[job.current_stage] || stageLabel || "Processing";
-  }, [job, stageLabel]);
+  })();
   const jobTitle = job?.status === "completed"
     ? "Quiz ready"
     : job?.status === "failed"
