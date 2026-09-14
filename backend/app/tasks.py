@@ -1,7 +1,7 @@
-import asyncio
 import logging
 from datetime import datetime, timezone
 
+from app.core.async_loop import run_async
 from app.core.celery_app import celery_app
 from app.db.session import SessionLocal
 
@@ -27,11 +27,7 @@ def ingest_material_task(self, material_id: str) -> dict:
         if material.status == MaterialStatus.READY:
             return {"status": "already_ready", "material_id": material_id}
 
-        loop = asyncio.new_event_loop()
-        try:
-            loop.run_until_complete(run_ingestion_for_material(material_id))
-        finally:
-            loop.close()
+        run_async(run_ingestion_for_material(material_id))
 
         db.expire_all()
         material = db.get(Material, material_id)
@@ -92,11 +88,7 @@ def generate_quiz_task(
 
         for index, material in enumerate(materials):
             if material.status != MaterialStatus.READY:
-                loop = asyncio.new_event_loop()
-                try:
-                    loop.run_until_complete(run_ingestion_for_material(material.id))
-                finally:
-                    loop.close()
+                run_async(run_ingestion_for_material(material.id))
             update_job("reading_materials", 10 + int((index + 1) / len(materials) * 30))
 
         db.expire_all()
@@ -111,21 +103,17 @@ def generate_quiz_task(
 
         primary = materials[0]
         update_job("finding_relevant_content", 50)
-        loop = asyncio.new_event_loop()
-        try:
-            generated = loop.run_until_complete(
-                generate_quiz_questions(
-                    db,
-                    user_id=user_id,
-                    material_id=primary.id,
-                    material_ids=material_ids,
-                    number_of_questions=question_count,
-                    difficulty=Difficulty(difficulty),
-                    question_types=[QuestionType(value) for value in question_types],
-                )
+        generated = run_async(
+            generate_quiz_questions(
+                db,
+                user_id=user_id,
+                material_id=primary.id,
+                material_ids=material_ids,
+                number_of_questions=question_count,
+                difficulty=Difficulty(difficulty),
+                question_types=[QuestionType(value) for value in question_types],
             )
-        finally:
-            loop.close()
+        )
 
         if not generated:
             raise ValueError("No questions could be generated from the selected materials.")
