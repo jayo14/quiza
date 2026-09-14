@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from app.ai.llm.base import LLMProvider
 from app.ai.llm.errors import classify_error, should_failover, ErrorCategory
 from app.ai.llm.gemini import GeminiLLMProvider
+from app.ai.llm.groq_provider import GroqProvider
 from app.ai.llm.nvidia_nim import NvidiaNIMProvider
 from app.ai.llm.openai_provider import OpenAIProvider
 from app.core.config import settings
@@ -16,7 +17,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class FailoverLLMProvider(LLMProvider):
-    """Orchestrates an ordered chain of LLM providers (Gemini, OpenAI, NVIDIA NIM).
+    """Orchestrates an ordered chain of LLM providers (Gemini, Groq, OpenAI, NVIDIA NIM).
     If a model or provider fails, is rate limited, or experiences high demand (e.g. 503),
     execution seamlessly fails over to the next available provider in the chain."""
 
@@ -29,6 +30,7 @@ class FailoverLLMProvider(LLMProvider):
     def _build_default_providers(self) -> list[LLMProvider]:
         provider_map = {
             "gemini": GeminiLLMProvider,
+            "groq": GroqProvider,
             "openai": OpenAIProvider,
             "nvidia": NvidiaNIMProvider,
             "nvidia_nim": NvidiaNIMProvider,
@@ -71,7 +73,7 @@ class FailoverLLMProvider(LLMProvider):
         if not active:
             raise AIServiceError(
                 "No AI provider is configured. Please configure at least one of "
-                "GEMINI_API_KEY, OPENAI_API_KEY, or NVIDIA_API_KEY."
+                "GEMINI_API_KEY, GROQ_API_KEY, OPENAI_API_KEY, or NVIDIA_API_KEY."
             )
 
         last_error: Exception | None = None
@@ -118,7 +120,7 @@ class FailoverLLMProvider(LLMProvider):
         if not active:
             raise AIServiceError(
                 "No AI provider is configured. Please configure at least one of "
-                "GEMINI_API_KEY, OPENAI_API_KEY, or NVIDIA_API_KEY."
+                "GEMINI_API_KEY, GROQ_API_KEY, OPENAI_API_KEY, or NVIDIA_API_KEY."
             )
 
         last_error: Exception | None = None
