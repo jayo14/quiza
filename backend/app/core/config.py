@@ -40,14 +40,20 @@ class Settings(BaseSettings):
     openai_chat_model: str = "gpt-4o-mini"
     openai_fallback_models: str = "gpt-4o-mini,gpt-4o"
 
+    # Groq (ultra-fast LPU inference)
+    groq_api_key: str | None = None
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_chat_model: str = "llama-3.3-70b-versatile"
+    groq_fallback_models: str = "llama-3.1-8b-instant"
+
     # NVIDIA BUILD NIM
     nvidia_api_key: str | None = None
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
-    nvidia_chat_model: str = "meta/llama-3.3-70b-instruct"
-    nvidia_fallback_models: str = "meta/llama-3.3-70b-instruct,mistralai/mistral-large-2-instruct,deepseek-ai/deepseek-r1"
+    nvidia_chat_model: str = "deepseek-ai/deepseek-v4-flash"
+    nvidia_fallback_models: str = "nvidia/llama-3.3-nemotron-super-49b-v1.5,meta/llama-3.1-70b-instruct,nvidia/llama-3.1-nemotron-ultra-253b-v1"
 
     # Provider failover chain & health management
-    llm_provider_priority: str = "gemini,openai,nvidia"
+    llm_provider_priority: str = "gemini,groq,openai,nvidia"
     llm_model_cooldown_seconds: int = 60
 
     storage_backend: str = "supabase"
@@ -93,7 +99,7 @@ class Settings(BaseSettings):
 
     # Celery / Redis
     redis_url: str = "redis://localhost:6379/0"
-    auto_start_celery: bool = False
+    auto_start_celery: bool = True
 
 
     cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:3000,https://quiza-urmm.onrender.com"
