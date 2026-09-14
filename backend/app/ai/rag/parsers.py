@@ -23,10 +23,10 @@ class DocumentParser(ABC):
 
 class PdfParser(DocumentParser):
     def parse(self, content: bytes) -> list[ParsedPage]:
-        import fitz  # PyMuPDF
+        import pymupdf  # PyMuPDF (fitz is deprecated)
 
         try:
-            doc = fitz.open(stream=content, filetype="pdf")
+            doc = pymupdf.open(stream=content, filetype="pdf")
         except Exception as exc:
             raise ValidationFailedError(f"Could not read PDF file: {exc}") from exc
 
