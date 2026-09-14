@@ -40,10 +40,16 @@ Quiza is built with a modern full-stack architecture combining high-performance 
 - **Database & Storage**: We used SQLAlchemy 2.0 with Alembic migrations, and chose Supabase to store both raw file uploads and our production vector database using `pgvector` (with SQLite for zero-config local development).
 - **Authentication**: Secure JWT authentication (`python-jose`) with bcrypt password hashing and token refresh cycles.
 - **Document Extractors**: PyMuPDF (`fitz`) for PDF parsing, `python-docx` for document processing, and `pytesseract` for image-to-text OCR.
+- **Background Tasks**: Celery with Redis for async quiz generation, material ingestion, and retry logic with automatic stale-state recovery on startup.
 
 ### 3. Machine Learning & RAG Engine
-- **Large Language Model (LLM)**: Google Gemini (`gemini-2.5-flash` / `gemini-3.6-flash`) interfaced through abstract provider abstractions (`LLMProvider`).
-- **Embeddings & Vector Search**: Google Gemini Embeddings (`text-embedding-004`) with pluggable vector stores (`VectorStore`).
+- **Large Language Model (LLM)**: Multi-provider failover chain with automatic cooldown and retry:
+  - **Primary**: Google Gemini (`gemini-3.6-flash`)
+  - **Fast fallback**: Groq (`llama-3.3-70b-versatile`) for ultra-low latency inference
+  - **General fallback**: OpenAI (`gpt-4o-mini`)
+  - **Extended fallback**: NVIDIA NIM (`deepseek-ai/deepseek-v4-flash`)
+- **Provider Abstraction**: `LLMProvider` base class with `FailoverLLMProvider` orchestrating ordered failover across providers, with per-model cooldowns, 404/410 detection for deprecated models, and rate-limit-aware retry.
+- **Embeddings & Vector Search**: Google Gemini Embeddings with pluggable vector stores (`VectorStore`).
 - **Mathematical Grounding & Cosine Distance**:
   Documents are chunked into semantic snippets $\mathbf{d}_i$ and embedded into vector space $\mathbb{R}^d$. Given a prompt or query chunk $\mathbf{q}$, similarity search measures cosine similarity:
 
@@ -60,6 +66,11 @@ Quiza is built with a modern full-stack architecture combining high-performance 
 
   where $S_{j,t} \in [0, 1]$ is the score on attempt $j$ for topic $t$, weighted exponentially by recency $w_j = e^{-\lambda (t_{\text{now}} - t_j)}$.
 
+### 4. Observability & Health Monitoring
+- **Provider Health Endpoint**: `/api/v1/health/providers` exposes real-time provider availability and configuration status.
+- **Structured Error Classification**: Centralized `classify_error()` function categorizes failures (auth, rate limit, model not found, server error) and routes retry decisions through `should_failover()`.
+- **Celery Worker Auto-Recovery**: Stale materials, quizzes, and generation jobs stuck in processing for >10 minutes are automatically reset to failed state on application startup.
+
 ---
 
 ## Challenges we ran into
@@ -67,6 +78,10 @@ Quiza is built with a modern full-stack architecture combining high-performance 
 - **Hallucination Prevention**: Ensuring AI-generated questions and explanations never invent facts outside the uploaded document. We solved this by enforcing strict prompt-grounding constraints and Pydantic validation schemas with single-retry feedback loops.
 - **Render Free-Tier Cold Boots**: Render's free tier spins down services after 15 minutes of inactivity. We engineered an automated GitHub Actions keep-alive workflow (`.github/workflows/keep-alive.yml`) along with client-side server warmup notifications to ensure seamless UX.
 - **Adblocker Interception**: Browser extensions blocked root `/health` requests (`ERR_BLOCKED_BY_CLIENT`). We introduced API-scoped ping endpoints (`/api/v1/ping`) and graceful client-side fallback handling.
+- **NVIDIA NIM Model Deprecation**: NVIDIA NIM models like `meta/llama-3.3-70b-instruct` reached end-of-life and returned 410 errors. We built permanent-error detection (`_is_permanent_model_error`) that recognizes 404/410 status codes and "end of life" messages, placing deprecated models on 24-hour cooldowns and failing over to the next provider instantly.
+- **Multi-Provider Failover Complexity**: Each LLM provider (Gemini, Groq, OpenAI, NVIDIA NIM) has different rate limits, error formats, and retry semantics. We implemented a centralized `classify_error()` system that normalizes errors across providers and routes retry decisions, plus per-model cooldowns with exponential backoff for rate-limited endpoints.
+- **React Hooks Ordering Violation**: A `useMemo` hook placed after an early return caused "Rendered more hooks than during the previous render" crashes. We replaced it with a plain IIFE since the computation was a simple derivation that didn't benefit from memoization.
+- **Celery Worker Reliability**: Quiz generation jobs sometimes got stuck in "queued" state when the Celery worker crashed or Redis was unreachable. We added stale-state recovery on startup, client-side timeout detection for queued jobs, and a restart/cancel UX for jobs stuck beyond 30 seconds.
 
 ---
 
@@ -76,6 +91,10 @@ Quiza is built with a modern full-stack architecture combining high-performance 
 - **Lightning-Fast UI**: Sub-second UI state transitions powered by Vite and optimized React components.
 - **Robust Mocking**: Complete test suite execution without consuming API credits or requiring network calls through custom mock providers.
 - **Cross-Platform Resilience**: Flawless deployment and execution support across Linux, macOS, and Windows.
+- **Four-Provider Failover Chain**: Seamless automatic failover across Gemini, Groq, OpenAI, and NVIDIA NIM with per-model cooldowns, deprecated-model detection, and rate-limit-aware retry—ensuring quiz generation stays available even when individual providers go down.
+- **Intelligent Error Classification**: Centralized error taxonomy that correctly distinguishes auth failures, rate limits, model-not-found (404/410), context length, and transient errors—each with appropriate retry or abort behavior.
+- **Celery Auto-Recovery**: Stale jobs, materials, and quizzes stuck in processing are automatically recovered on server startup, preventing silent failures from blocking users.
+- **Provider Health Monitoring**: Real-time `/health/providers` endpoint exposing which LLM providers are configured and available, making production debugging straightforward.
 
 ---
 
@@ -84,6 +103,10 @@ Quiza is built with a modern full-stack architecture combining high-performance 
 - Designing modular provider abstractions (`LLMProvider`, `EmbeddingProvider`, `VectorStore`) makes swapping underlying AI models or vector databases effortless.
 - Client UX design during AI latency (warmup toasts, progress spinners, retry indicators) is just as critical as raw backend speed.
 - Strict Pydantic schema validation is key to reliably consuming structured outputs from LLMs in production.
+- **Provider deprecation is inevitable**: NVIDIA NIM models went end-of-life mid-development. Building permanent-error detection (404/410 + message matching) with extended cooldowns prevents wasted retry cycles on dead models.
+- **Rate limits vary wildly across providers**: Groq returns `retry-after` headers, OpenAI returns credit-exhaustion errors, Gemini returns `RESOURCE_EXHAUSTED`. A unified error classifier with provider-specific retry parsing is essential for reliable multi-provider systems.
+- **React hooks ordering is strict**: Placing hooks after early returns causes cryptic crashes. Always place all hooks at the top level, and prefer plain variables over `useMemo` for simple derivations.
+- **Background task reliability needs defense in depth**: Celery workers crash, Redis drops connections, and jobs get stuck. Startup recovery, client-side timeout detection, and user-initiated restart paths all work together to prevent silent failures.
 
 ---
 
