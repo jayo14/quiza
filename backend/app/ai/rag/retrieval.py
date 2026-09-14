@@ -21,36 +21,40 @@ async def retrieve_relevant_chunks(
     another student's material."""
 
     provider = embedding_provider or get_embedding_provider()
-    query_embedding = await provider.embed_query(query)
+    try:
+        query_embedding = await provider.embed_query(query)
 
-    vector_store = get_vector_store(db)
-    results = vector_store.search(
-        query_embedding=query_embedding, user_id=user_id, top_k=top_k, material_id=material_id
-    )
-    if not results:
-        return []
-
-    seen_ids: set[str] = set()
-    filtered = []
-    for r in results:
-        if r.score < 0.3:
-            continue
-        if r.chunk_id in seen_ids:
-            continue
-        seen_ids.add(r.chunk_id)
-        filtered.append(r)
-
-    if not filtered:
-        return []
-
-    chunk_ids = [r.chunk_id for r in filtered]
-    rows = db.scalars(
-        select(DocumentChunk).where(
-            DocumentChunk.id.in_(chunk_ids), DocumentChunk.user_id == user_id
+        vector_store = get_vector_store(db)
+        results = vector_store.search(
+            query_embedding=query_embedding, user_id=user_id, top_k=top_k, material_id=material_id
         )
-    ).all()
+        if not results:
+            return []
 
-    rows_by_id = {row.id: row for row in rows}
-    score_by_id = {r.chunk_id: r.score for r in filtered}
-    ordered = [(rows_by_id[cid], score_by_id[cid]) for cid in chunk_ids if cid in rows_by_id]
-    return ordered
+        seen_ids: set[str] = set()
+        filtered = []
+        for r in results:
+            if r.score < 0.3:
+                continue
+            if r.chunk_id in seen_ids:
+                continue
+            seen_ids.add(r.chunk_id)
+            filtered.append(r)
+
+        if not filtered:
+            return []
+
+        chunk_ids = [r.chunk_id for r in filtered]
+        rows = db.scalars(
+            select(DocumentChunk).where(
+                DocumentChunk.id.in_(chunk_ids), DocumentChunk.user_id == user_id
+            )
+        ).all()
+
+        rows_by_id = {row.id: row for row in rows}
+        score_by_id = {r.chunk_id: r.score for r in filtered}
+        ordered = [(rows_by_id[cid], score_by_id[cid]) for cid in chunk_ids if cid in rows_by_id]
+        return ordered
+    finally:
+        if embedding_provider is None:
+            await provider.close()
