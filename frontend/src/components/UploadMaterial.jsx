@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -475,6 +475,19 @@ function UploadMaterial() {
   const stageLabel = job?.current_stage
     ?.replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const stageFriendlyText = useMemo(() => {
+    if (!job) return "";
+    if (job.status === "queued") {
+      return "Waiting for worker to start · Connecting to engine";
+    }
+    const friendly = {
+      preparing_materials: "Preparing study materials",
+      reading_materials: "Reading and processing content",
+      finding_relevant_content: "Generating quiz questions with AI",
+      saving_quiz: "Finalizing and saving your quiz",
+    };
+    return friendly[job.current_stage] || stageLabel || "Processing";
+  }, [job, stageLabel]);
   const jobTitle = job?.status === "completed"
     ? "Quiz ready"
     : job?.status === "failed"
@@ -828,10 +841,13 @@ function UploadMaterial() {
             <div><span>Progress</span><strong>{job.progress}%</strong></div>
           </div>
           <div className="upload-material__progress-bar-wrap">
-            <div className="upload-material__progress-bar-fill" style={{ width: `${job.progress}%` }} />
+            <div
+              className={`upload-material__progress-bar-fill ${job.status === "queued" ? "upload-material__progress-bar-fill--queued" : ""}`}
+              style={{ width: job.status === "queued" ? "100%" : `${job.progress}%` }}
+            />
           </div>
           <p className="upload-material__job-stage">
-            {stageLabel || "Waiting to start"}{generating ? " · This may take a few minutes." : ""}
+            {stageFriendlyText}{generating ? " · This may take a few minutes." : ""}
           </p>
           {generating && (
             <button
@@ -873,29 +889,74 @@ function UploadMaterial() {
               )}
             </button>
           )}
+          {job.status === "cancelled" && (
+            <div className="upload-material__job-failed-actions">
+              <p className="upload-material__error upload-material__error--cancelled">
+                Generation was cancelled. You can restart generation or dismiss this card.
+              </p>
+              <div className="upload-material__job-action-buttons">
+                <button
+                  type="button"
+                  className="upload-material__retry-job-btn"
+                  onClick={handleRetryJob}
+                  disabled={isRetryingJob}
+                >
+                  {isRetryingJob ? (
+                    <>
+                      <Loader2 size={15} className="upload-material__spin" />
+                      <span>Restarting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw size={15} />
+                      <span>Restart Generation</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="upload-material__cancel-job-btn"
+                  onClick={() => setJob(null)}
+                  style={{ marginTop: 0 }}
+                >
+                  <span>Dismiss</span>
+                </button>
+              </div>
+            </div>
+          )}
           {job.status === "failed" && (
             <div className="upload-material__job-failed-actions">
               <p className="upload-material__error">
                 {job.error_message || "We couldn't generate this quiz. Please try again."}
               </p>
-              <button
-                type="button"
-                className="upload-material__retry-job-btn"
-                onClick={handleRetryJob}
-                disabled={isRetryingJob}
-              >
-                {isRetryingJob ? (
-                  <>
-                    <Loader2 size={15} className="upload-material__spin" />
-                    <span>Retrying...</span>
-                  </>
-                ) : (
-                  <>
-                    <RotateCcw size={15} />
-                    <span>Try Again</span>
-                  </>
-                )}
-              </button>
+              <div className="upload-material__job-action-buttons">
+                <button
+                  type="button"
+                  className="upload-material__retry-job-btn"
+                  onClick={handleRetryJob}
+                  disabled={isRetryingJob}
+                >
+                  {isRetryingJob ? (
+                    <>
+                      <Loader2 size={15} className="upload-material__spin" />
+                      <span>Retrying...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw size={15} />
+                      <span>Try Again</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="upload-material__cancel-job-btn"
+                  onClick={() => setJob(null)}
+                  style={{ marginTop: 0 }}
+                >
+                  <span>Dismiss</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
