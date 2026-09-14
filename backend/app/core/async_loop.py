@@ -21,7 +21,18 @@ def get_worker_loop() -> asyncio.AbstractEventLoop:
     return _worker_loop
 
 
+async def _gather_coroutines(coros):
+    """Run multiple coroutines concurrently, collecting all results/exceptions."""
+    return await asyncio.gather(*coros, return_exceptions=True)
+
+
 def run_async(coro):
     """Run an async coroutine on the shared worker event loop from sync Celery code."""
     loop = get_worker_loop()
     return loop.run_until_complete(coro)
+
+
+def run_async_gather(coros):
+    """Run multiple coroutines concurrently on the shared worker event loop."""
+    loop = get_worker_loop()
+    return loop.run_until_complete(_gather_coroutines(coros))

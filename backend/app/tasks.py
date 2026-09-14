@@ -2,7 +2,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
-from app.core.async_loop import run_async
+from app.core.async_loop import run_async, run_async_gather
 from app.core.celery_app import celery_app
 from app.db.session import SessionLocal
 
@@ -91,7 +91,7 @@ def generate_quiz_task(
         if pending:
             update_job("reading_materials", 10)
             coros = [run_ingestion_for_material(m.id) for m in pending]
-            run_async(asyncio.gather(*coros, return_exceptions=True))
+            run_async_gather(coros)
 
         db.expire_all()
         materials = [db.get(Material, material_id) for material_id in material_ids]
