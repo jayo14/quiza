@@ -9,6 +9,7 @@ class ErrorCategory(Enum):
     CONTEXT_LENGTH = "context_length"
     SERVER_ERROR = "server_error"
     PROVIDER_UNAVAILABLE = "provider_unavailable"
+    MODEL_NOT_FOUND = "model_not_found"
     UNKNOWN = "unknown"
 
 
@@ -18,6 +19,17 @@ def classify_error(exc: Exception) -> ErrorCategory:
 
     if status in (401, 403) or "authentication" in msg or "invalid api key" in msg or "unauthorized" in msg:
         return ErrorCategory.AUTH_ERROR
+    if (
+        status in (404, 410)
+        or "404" in msg
+        or "410" in msg
+        or "not found" in msg
+        or "end of life" in msg
+        or "no longer available" in msg
+        or "does not exist" in msg
+        or "model_not_found" in msg
+    ):
+        return ErrorCategory.MODEL_NOT_FOUND
     if status == 429 or "rate_limit" in msg or "rate limit" in msg or "quota" in msg or "resource_exhausted" in msg:
         return ErrorCategory.RATE_LIMITED
     if status == 400 or "invalid request" in msg or "bad request" in msg:
@@ -43,5 +55,6 @@ def should_failover(exc: Exception) -> bool:
         ErrorCategory.RATE_LIMITED,
         ErrorCategory.SERVER_ERROR,
         ErrorCategory.PROVIDER_UNAVAILABLE,
+        ErrorCategory.MODEL_NOT_FOUND,
         ErrorCategory.UNKNOWN,
     )
