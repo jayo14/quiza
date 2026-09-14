@@ -211,3 +211,29 @@ def health_db() -> dict:
     except Exception as exc:
         elapsed_ms = (time.perf_counter() - start) * 1000
         return {"status": "error", "db_ms": round(elapsed_ms, 1), "error": str(exc)[:200]}
+
+
+@app.get("/health/providers", tags=["health"])
+@app.get(f"{settings.api_v1_prefix}/health/providers", tags=["health"])
+def health_providers() -> dict:
+    """Check which LLM providers are configured and available."""
+    from app.ai.llm.failover import FailoverLLMProvider
+
+    try:
+        failover = FailoverLLMProvider()
+        providers = []
+        for provider in failover.providers:
+            name = getattr(provider, "provider_name", provider.__class__.__name__)
+            available = provider.is_available()
+            providers.append({
+                "name": name,
+                "available": available,
+                "status": "configured" if available else "not_configured",
+            })
+        return {
+            "status": "ok",
+            "providers": providers,
+            "active_count": len(failover.available_providers),
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)[:200]}
