@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="quiza-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8F80FF" />
+      <stop offset="100%" stop-color="#6854F5" />
+    </linearGradient>
+    <filter id="subtle-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000000" flood-opacity="0.3" />
+    </filter>
+  </defs>
+  <!-- Background Rounded Square -->
+  <rect width="32" height="32" rx="7" fill="url(#quiza-grad)" />
+  
+  <!-- Subtle inner border for contrast -->
+  <rect x="0.5" y="0.5" width="31" height="31" rx="6.5" fill="none" stroke="rgba(255, 255, 255, 0.2)" stroke-width="1" />
+  
+  <!-- Letter Q -->
+  <text 
+    x="16" 
+    y="22" 
+    font-family="system-ui, -apple-system, 'Inter', 'Segoe UI', Roboto, sans-serif" 
+    font-size="20" 
+    font-weight="800" 
+    fill="#FFFFFF" 
+    text-anchor="middle"
+    filter="url(#subtle-shadow)"
+    letter-spacing="-0.5"
+  >Q</text>
+</svg>

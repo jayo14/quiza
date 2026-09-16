@@ -1,0 +1,1 @@
+Students spend 80% of their study time passively re-reading notes—a method proven to produce poor retention. We built Quiza: upload your lecture notes or textbooks, get 100% context-grounded AI quizzes with zero hallucinations, and pinpoint your exact weak spots before exam day.

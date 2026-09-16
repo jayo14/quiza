@@ -1,0 +1,1090 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Quiza — AI-Powered Active Recall & Study Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/audio-data.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        margin: 0;
+        background: #0b0b12;
+        color: #f5f5f7;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #0b0b12;
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+      }
+      .bg-layer {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 50% 30%, #16152b 0%, #0b0b12 70%);
+        pointer-events: none;
+      }
+      .glow-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(140px);
+        pointer-events: none;
+        opacity: 0.35;
+        will-change: transform, opacity;
+      }
+      .glow-orb-primary {
+        width: 800px;
+        height: 800px;
+        left: 560px;
+        top: 140px;
+        background: radial-gradient(circle, rgba(124, 106, 255, 0.45) 0%, rgba(124, 106, 255, 0) 70%);
+      }
+      .glow-orb-secondary {
+        width: 600px;
+        height: 600px;
+        right: 100px;
+        bottom: 50px;
+        background: radial-gradient(circle, rgba(53, 208, 127, 0.25) 0%, rgba(53, 208, 127, 0) 70%);
+      }
+
+      /* Typography & Common UI */
+      .badge-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 20px;
+        border-radius: 9999px;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+      .badge-purple {
+        background: rgba(124, 106, 255, 0.18);
+        border: 1px solid rgba(124, 106, 255, 0.6);
+        color: #e0e7ff;
+      }
+      .badge-green {
+        background: #052e16;
+        border: 1px solid #22c55e;
+        color: #86efac;
+      }
+      .badge-red {
+        background: #450a0a;
+        border: 1px solid #ef4444;
+        color: #fca5a5;
+      }
+
+      /* Card styling */
+      .ui-card {
+        background: #171722;
+        border: 1px solid #252532;
+        border-radius: 20px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+      }
+
+      /* Header bar */
+      .top-app-bar {
+        position: absolute;
+        top: 40px;
+        left: 80px;
+        right: 80px;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 28px;
+        background: rgba(23, 23, 34, 0.85);
+        border: 1px solid #252532;
+        border-radius: 16px;
+        backdrop-filter: blur(12px);
+      }
+      .app-brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .app-brand-logo {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #8F80FF 0%, #6854F5 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 22px;
+        color: #ffffff;
+      }
+      .app-brand-text {
+        font-size: 22px;
+        font-weight: 700;
+        color: #ffffff;
+      }
+      .app-brand-sub {
+        font-size: 16px;
+        color: #cbd5e1;
+        margin-left: 8px;
+      }
+      .app-status-tag {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 15px;
+        color: #cbd5e1;
+      }
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #35d07f;
+        box-shadow: 0 0 10px #35d07f;
+      }
+
+      /* Virtual Cursor */
+      .simulated-cursor {
+        position: absolute;
+        width: 32px;
+        height: 32px;
+        pointer-events: none;
+        z-index: 999;
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6));
+      }
+
+      /* Scene 1 Elements */
+      .scene-1-container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0 120px;
+      }
+      .hook-title-1 {
+        font-size: 72px;
+        font-weight: 800;
+        line-height: 1.15;
+        color: #ffffff;
+        max-width: 1400px;
+        margin-top: 28px;
+        letter-spacing: -1.5px;
+      }
+      .hook-sub-1 {
+        font-size: 32px;
+        color: #cbd5e1;
+        margin-top: 22px;
+        font-weight: 500;
+      }
+      .hook-title-2 {
+        font-size: 84px;
+        font-weight: 800;
+        line-height: 1.15;
+        color: #ffffff;
+        max-width: 1400px;
+        margin-top: 28px;
+        letter-spacing: -1.5px;
+      }
+      .brand-gradient-text {
+        background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      /* Scene 2 Elements */
+      .scene-2-container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 130px 100px 60px;
+      }
+      .ingest-box {
+        width: 1360px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 32px;
+        margin-bottom: 24px;
+        background: #171722;
+        border: 1px solid #252532;
+        border-radius: 16px;
+      }
+      .ingest-left {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+      .doc-badge-pdf {
+        background: #b91c1c;
+        color: #ffffff;
+        font-weight: 800;
+        font-size: 16px;
+        padding: 6px 14px;
+        border-radius: 8px;
+        letter-spacing: 0.5px;
+      }
+      .doc-info-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #ffffff;
+      }
+      .doc-info-sub {
+        font-size: 15px;
+        color: #cbd5e1;
+        margin-top: 2px;
+      }
+      .stage-pill {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(124, 106, 255, 0.15);
+        border: 1px solid rgba(124, 106, 255, 0.5);
+        padding: 8px 18px;
+        border-radius: 9999px;
+        color: #e0e7ff;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .pulse-ring {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #7c6aff;
+        box-shadow: 0 0 10px #7c6aff;
+      }
+
+      /* Quiz Card */
+      .quiz-card {
+        width: 1360px;
+        padding: 36px 44px;
+      }
+      .quiz-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #252532;
+      }
+      .quiz-tracker {
+        font-size: 16px;
+        font-weight: 600;
+        color: #c084fc;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .quiz-question-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #ffffff;
+        line-height: 1.35;
+        margin-bottom: 24px;
+      }
+      .options-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .option-item {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 18px 24px;
+        background: #11111a;
+        border: 1.5px solid #252532;
+        border-radius: 12px;
+        transition: all 0.2s ease;
+      }
+      .option-letter {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: #1c1c2b;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 17px;
+        flex-shrink: 0;
+      }
+      .option-text {
+        font-size: 17px;
+        color: #cbd5e1;
+        line-height: 1.35;
+      }
+      .option-selected-correct {
+        background: rgba(34, 197, 94, 0.18) !important;
+        border-color: #22c55e !important;
+      }
+      .option-selected-correct .option-letter {
+        background: #22c55e !important;
+        color: #ffffff !important;
+      }
+      .option-selected-correct .option-text {
+        color: #ffffff !important;
+        font-weight: 600;
+      }
+
+      /* Citation Banner */
+      .citation-box {
+        margin-top: 20px;
+        padding: 16px 24px;
+        background: rgba(34, 197, 94, 0.12);
+        border: 1px solid rgba(34, 197, 94, 0.4);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .citation-text {
+        font-size: 16px;
+        font-weight: 600;
+        color: #86efac;
+      }
+      .citation-source {
+        font-size: 14px;
+        color: #cbd5e1;
+        font-family: ui-monospace, monospace;
+      }
+
+      /* Scene 3 Elements */
+      .scene-3-container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 130px 100px 60px;
+      }
+      .stats-strip {
+        width: 1360px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+      .stat-card {
+        padding: 22px 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .stat-card-label {
+        font-size: 15px;
+        color: #cbd5e1;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .stat-card-val {
+        font-size: 38px;
+        font-weight: 800;
+        color: #ffffff;
+      }
+      .stat-val-green {
+        color: #35d07f;
+      }
+      .stat-val-purple {
+        color: #c084fc;
+      }
+      .stat-val-blue {
+        color: #38bdf8;
+      }
+
+      /* Mastery Cards */
+      .mastery-list {
+        width: 1360px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .topic-card {
+        padding: 24px 32px;
+        background: #171722;
+        border: 1px solid #252532;
+        border-radius: 16px;
+      }
+      .topic-card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+      .topic-name {
+        font-size: 22px;
+        font-weight: 700;
+        color: #ffffff;
+      }
+      .progress-track {
+        width: 100%;
+        height: 12px;
+        background: #11111a;
+        border-radius: 9999px;
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        border-radius: 9999px;
+      }
+      .fill-green {
+        background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+      }
+      .fill-red {
+        background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+      }
+      .action-row {
+        width: 1360px;
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 20px;
+      }
+      .practice-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 36px;
+        background: linear-gradient(135deg, #7c6aff 0%, #6366f1 100%);
+        border: none;
+        border-radius: 12px;
+        font-size: 18px;
+        font-weight: 700;
+        color: #ffffff;
+        box-shadow: 0 10px 30px rgba(124, 106, 255, 0.4);
+      }
+
+      /* Scene 4 Elements */
+      .scene-4-container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0 100px;
+      }
+      .outro-logo-box {
+        width: 110px;
+        height: 110px;
+        border-radius: 24px;
+        background: linear-gradient(135deg, #8F80FF 0%, #6854F5 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 64px;
+        font-weight: 800;
+        color: #ffffff;
+        box-shadow: 0 20px 60px rgba(104, 84, 245, 0.5);
+        margin-bottom: 24px;
+      }
+      .outro-brand-name {
+        font-size: 88px;
+        font-weight: 800;
+        color: #ffffff;
+        letter-spacing: -2px;
+        line-height: 1;
+      }
+      .outro-headline {
+        font-size: 38px;
+        font-weight: 700;
+        color: #c084fc;
+        margin-top: 20px;
+      }
+      .outro-sub {
+        font-size: 24px;
+        color: #cbd5e1;
+        margin-top: 14px;
+        max-width: 900px;
+      }
+      .outro-pills-row {
+        display: flex;
+        gap: 14px;
+        margin-top: 36px;
+      }
+      .outro-tag {
+        padding: 10px 22px;
+        background: #171722;
+        border: 1px solid #2e303a;
+        border-radius: 9999px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #e2e8f0;
+      }
+      .outro-cta-bar {
+        margin-top: 36px;
+        padding: 12px 36px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 9999px;
+        font-size: 24px;
+        font-weight: 700;
+        color: #ffffff;
+        letter-spacing: 0.5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-width="1920"
+      data-height="1080"
+      data-duration="20.5"
+    >
+      <!-- Background and ambient audio-reactive light layer -->
+      <div id="bg-layer" class="bg-layer">
+        <div id="glow-orb" class="glow-orb glow-orb-primary"></div>
+        <div id="glow-orb-2" class="glow-orb glow-orb-secondary"></div>
+      </div>
+
+      <!-- Persistent App Navigation Shell (visible in scenes 2 & 3) -->
+      <header id="top-nav" class="top-app-bar" style="opacity: 0;">
+        <div class="app-brand">
+          <div class="app-brand-logo">Q</div>
+          <span class="app-brand-text">Quiza</span>
+          <span class="app-brand-sub">// Active Recall Studio</span>
+        </div>
+        <div class="app-status-tag">
+          <div class="status-dot"></div>
+          <span>100% Context Grounded · Multi-Provider Active</span>
+        </div>
+      </header>
+
+      <!-- Simulated Virtual Cursor -->
+      <svg id="cursor" class="simulated-cursor" viewBox="0 0 24 24" fill="none" style="opacity: 0;">
+        <path d="M5.5 3.2L18.8 12.2C19.7 12.8 19.3 14.3 18.2 14.3H12.4L9.6 20.8C9.2 21.7 8.0 22.0 7.2 21.4L5.6 20.2C4.8 19.6 4.6 18.4 5.1 17.5L7.9 11.2H3.5C2.4 11.2 1.8 9.9 2.6 9.1L5.5 3.2Z" fill="#ffffff" stroke="#0b0b12" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+
+      <!-- SCENE 1: The Hook (0.0s - 4.0s) -->
+      <section id="scene-1" class="clip" data-start="0" data-duration="4.0" data-track-index="1">
+        <div class="scene-1-container">
+          <div id="s1-badge" class="badge-pill badge-purple" style="opacity: 0;">
+            <span>Cognitive Science Reality</span>
+          </div>
+
+          <div id="s1-block-1" data-layout-allow-overlap style="display: flex; flex-direction: column; align-items: center;">
+            <h1 id="s1-title-1" class="hook-title-1" style="opacity: 0;">
+              Students spend 80% of study time passively re-reading notes.
+            </h1>
+            <p id="s1-sub-1" class="hook-sub-1" style="opacity: 0;">
+              Proven to produce poor long-term retention.
+            </p>
+          </div>
+
+          <div id="s1-block-2" data-layout-allow-overlap style="display: flex; flex-direction: column; align-items: center; position: absolute; opacity: 0;">
+            <div class="badge-pill badge-purple" style="margin-bottom: 20px;">
+              <span>The Solution</span>
+            </div>
+            <h1 class="hook-title-2">
+              Meet <span class="brand-gradient-text">Quiza</span>.
+            </h1>
+            <p class="hook-sub-1" style="color: #f5f5f7;">
+              Active recall powered by grounded AI.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCENE 2: Document Ingestion & Grounded Quiz (4.0s - 9.5s) -->
+      <section id="scene-2" class="clip" data-start="4.0" data-duration="5.5" data-track-index="2">
+        <div class="scene-2-container">
+          <!-- Ingestion Bar -->
+          <div id="s2-ingest-bar" class="ingest-box ui-card" style="opacity: 0;">
+            <div class="ingest-left">
+              <span class="doc-badge-pdf">PDF</span>
+              <div>
+                <div class="doc-info-title">neurobiology-exam-prep.pdf</div>
+                <div class="doc-info-sub">2.4 MB · 48 Pages · Synaptic Transmission</div>
+              </div>
+            </div>
+            <div id="s2-stage-pill" class="stage-pill">
+              <div class="pulse-ring"></div>
+              <span id="s2-stage-text">Reading and processing content...</span>
+            </div>
+          </div>
+
+          <!-- Active Quiz Card -->
+          <div id="s2-quiz-card" class="ui-card quiz-card" style="opacity: 0;">
+            <div class="quiz-card-header">
+              <span class="quiz-tracker">Question 3 of 10 · Active Attempt</span>
+              <span class="badge-pill badge-purple" style="font-size: 13px; padding: 4px 14px;">100% Grounded</span>
+            </div>
+
+            <h2 class="quiz-question-title">
+              What is the primary cellular mechanism behind Long-Term Potentiation (LTP)?
+            </h2>
+
+            <div class="options-grid">
+              <div id="s2-opt-a" class="option-item">
+                <div class="option-letter">A</div>
+                <div class="option-text">Passive sodium ion diffusion across axonal membranes</div>
+              </div>
+
+              <div id="s2-opt-b" class="option-item">
+                <div class="option-letter">B</div>
+                <div class="option-text">NMDA receptor activation triggering AMPA receptor insertion</div>
+              </div>
+
+              <div id="s2-opt-c" class="option-item">
+                <div class="option-letter">C</div>
+                <div class="option-text">Rapid degradation of acetylcholine in synaptic clefts</div>
+              </div>
+
+              <div id="s2-opt-d" class="option-item">
+                <div class="option-letter">D</div>
+                <div class="option-text">Inactivation of postsynaptic voltage-gated channels</div>
+              </div>
+            </div>
+
+            <!-- Instant Citation Verification Banner -->
+            <div id="s2-citation" class="citation-box" style="opacity: 0;">
+              <div class="citation-text">
+                ✓ Correct Answer Verified with Zero Hallucination
+              </div>
+              <div class="citation-source">
+                Direct Citation: neurobiology-exam-prep.pdf — Page 14, Slide 18 (§3.2)
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCENE 3: Algorithmic Weakness Analysis (9.5s - 15.5s) -->
+      <section id="scene-3" class="clip" data-start="9.5" data-duration="6.0" data-track-index="3">
+        <div class="scene-3-container">
+          <!-- Top Stats Row -->
+          <div id="s3-stats-strip" class="stats-strip" style="opacity: 0;">
+            <div class="ui-card stat-card">
+              <span class="stat-card-label">Overall Accuracy</span>
+              <span class="stat-card-val stat-val-green">84%</span>
+            </div>
+            <div class="ui-card stat-card">
+              <span class="stat-card-label">Grounding Accuracy</span>
+              <span class="stat-card-val stat-val-purple">100%</span>
+            </div>
+            <div class="ui-card stat-card">
+              <span class="stat-card-label">RAG Chunks Indexed</span>
+              <span class="stat-card-val stat-val-blue">1,420</span>
+            </div>
+          </div>
+
+          <!-- Mastery Breakdown -->
+          <div class="mastery-list">
+            <!-- Mastered Topic -->
+            <div id="s3-topic-1" class="topic-card" style="opacity: 0;">
+              <div class="topic-card-top">
+                <span class="topic-name">Synaptic Plasticity & Memory Consolidation</span>
+                <span class="badge-pill badge-green">MASTERED (92%)</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill fill-green" style="width: 92%;"></div>
+              </div>
+            </div>
+
+            <!-- Weakness Topic (Action Potentials) -->
+            <div id="s3-topic-2" class="topic-card" style="opacity: 0; border: 1.5px solid rgba(239, 68, 68, 0.4);">
+              <div class="topic-card-top">
+                <span class="topic-name">Action Potentials & Membrane Depolarization</span>
+                <span class="badge-pill badge-red">HIGH SEVERITY · 45% ACCURACY</span>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill fill-red" style="width: 45%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Targeted Practice Button Action -->
+          <div class="action-row">
+            <button id="s3-practice-btn" class="practice-btn" style="opacity: 0;">
+              <span id="s3-btn-icon">🎯</span>
+              <span id="s3-btn-text">Practice Topic (5 Targeted Questions)</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCENE 4: Outro / Punchline (15.5s - 20.5s) -->
+      <section id="scene-4" class="clip" data-start="15.5" data-duration="5.0" data-track-index="4">
+        <div class="scene-4-container">
+          <div id="s4-logo" class="outro-logo-box" style="opacity: 0;">
+            Q
+          </div>
+          <h1 id="s4-title" class="outro-brand-name" style="opacity: 0;">
+            Quiza
+          </h1>
+          <p id="s4-headline" class="outro-headline" style="opacity: 0;">
+            Zero Hallucinations. 100% Grounded Retention.
+          </p>
+          <p id="s4-sub" class="outro-sub" style="opacity: 0;">
+            Stop passively re-reading notes. Master any subject with AI-powered active recall.
+          </p>
+
+          <div id="s4-pills" class="outro-pills-row" style="opacity: 0;">
+            <div class="outro-tag">Multi-Provider Failover</div>
+            <div class="outro-tag">Celery Background Queues</div>
+            <div class="outro-tag">Supabase pgvector</div>
+            <div class="outro-tag">FastAPI + React 19</div>
+          </div>
+
+          <div id="s4-cta" class="outro-cta-bar" style="opacity: 0;">
+            quiza.app
+          </div>
+        </div>
+      </section>
+
+      <!-- DIRECT HOST ROOT AUDIO ELEMENTS (Non-negotiable contract) -->
+      <audio
+        id="bg-music"
+        src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3"
+        data-start="0"
+        data-duration="20.5"
+        data-track-index="10"
+        data-volume="1"
+      ></audio>
+
+      <audio
+        id="sfx-intro"
+        src="assets/sfx/impact/impactSoft_medium_001.ogg"
+        data-start="0.2"
+        data-duration="0.18"
+        data-track-index="11"
+        data-volume="0.70"
+      ></audio>
+
+      <audio
+        id="sfx-drop-doc"
+        src="assets/sfx/interface/drop_001.ogg"
+        data-start="4.2"
+        data-duration="0.11"
+        data-track-index="12"
+        data-volume="0.75"
+      ></audio>
+
+      <audio
+        id="sfx-click-opt"
+        src="assets/sfx/ui/mouseclick1.ogg"
+        data-start="8.2"
+        data-duration="0.06"
+        data-track-index="13"
+        data-volume="0.80"
+      ></audio>
+
+      <audio
+        id="sfx-verify-bell"
+        src="assets/sfx/impact/impactBell_heavy_000.ogg"
+        data-start="8.74"
+        data-duration="1.48"
+        data-track-index="14"
+        data-volume="0.85"
+      ></audio>
+
+      <audio
+        id="sfx-drop-card"
+        src="assets/sfx/interface/drop_002.ogg"
+        data-start="9.8"
+        data-duration="0.19"
+        data-track-index="15"
+        data-volume="0.70"
+      ></audio>
+
+      <audio
+        id="sfx-click-btn"
+        src="assets/sfx/interface/click_001.ogg"
+        data-start="13.6"
+        data-duration="0.10"
+        data-track-index="16"
+        data-volume="0.80"
+      ></audio>
+
+      <audio
+        id="sfx-outro-bell"
+        src="assets/sfx/impact/impactBell_heavy_003.ogg"
+        data-start="16.0"
+        data-duration="0.65"
+        data-track-index="17"
+        data-volume="0.85"
+      ></audio>
+    </div>
+
+    <!-- Timeline Animation Script -->
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // Audio-reactive treatment: sample every frame to let background glow gently breathe
+      if (window.AUDIO_DATA && window.AUDIO_DATA.frames) {
+        const orb1 = document.getElementById("glow-orb");
+        const orb2 = document.getElementById("glow-orb-2");
+        const total = window.AUDIO_DATA.totalFrames;
+        const fps = window.AUDIO_DATA.fps || 30;
+
+        for (let f = 0; f < total; f++) {
+          const frame = window.AUDIO_DATA.frames[f];
+          const bass = frame.bands ? frame.bands[0] || 0 : 0;
+          const mid = frame.bands ? frame.bands[2] || 0 : 0;
+          tl.call(
+            function () {
+              if (orb1) {
+                orb1.style.opacity = (0.28 + bass * 0.22).toFixed(3);
+                orb1.style.transform = "scale(" + (1.0 + bass * 0.12).toFixed(3) + ")";
+              }
+              if (orb2) {
+                orb2.style.opacity = (0.18 + mid * 0.18).toFixed(3);
+              }
+            },
+            [],
+            f / fps
+          );
+        }
+      }
+
+      // Music volume baseline
+      tl.set("#bg-music", { volume: 0.32 }, 0);
+
+      // ==========================================
+      // SCENE 1: The Hook (0.0s - 4.0s)
+      // ==========================================
+      tl.to("#s1-badge", { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.2);
+      tl.fromTo(
+        "#s1-title-1",
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" },
+        0.35
+      );
+      tl.fromTo(
+        "#s1-sub-1",
+        { opacity: 0, y: 15 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" },
+        0.85
+      );
+
+      // Transition inside Scene 1: reveal Quiza solution at 2.2s
+      tl.to("#s1-block-1", { opacity: 0, y: -20, duration: 0.35, ease: "power2.in" }, 2.0);
+      tl.to("#s1-badge", { opacity: 0, duration: 0.2 }, 2.0);
+      tl.fromTo(
+        "#s1-block-2",
+        { opacity: 0, scale: 0.92, y: 20 },
+        { opacity: 1, scale: 1.0, y: 0, duration: 0.5, ease: "back.out(1.4)" },
+        2.2
+      );
+
+      // ==========================================
+      // SCENE 2: Ingestion & Interactive Quiz (4.0s - 9.5s)
+      // ==========================================
+      // Navigation shell appears at 4.0s
+      tl.to("#top-nav", { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 4.0);
+
+      // Document ingestion bar drops in at 4.1s
+      tl.fromTo(
+        "#s2-ingest-bar",
+        { opacity: 0, y: -25 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
+        4.1
+      );
+
+      // Stage text updates at 4.8s
+      tl.call(
+        function () {
+          const el = document.getElementById("s2-stage-text");
+          if (el) el.textContent = "✓ Ingestion complete · Generating quiz with AI";
+        },
+        [],
+        4.8
+      );
+
+      // Active Quiz card reveals at 5.4s
+      tl.fromTo(
+        "#s2-quiz-card",
+        { opacity: 0, y: 30, scale: 0.97 },
+        { opacity: 1, y: 0, scale: 1.0, duration: 0.5, ease: "power3.out" },
+        5.4
+      );
+
+      // Option rows animate in sequentially
+      tl.fromTo(
+        ["#s2-opt-a", "#s2-opt-b", "#s2-opt-c", "#s2-opt-d"],
+        { opacity: 0, y: 15 },
+        { opacity: 1, y: 0, duration: 0.35, stagger: 0.12, ease: "power2.out" },
+        5.8
+      );
+
+      // Simulated cursor appears and navigates to Option B
+      tl.fromTo(
+        "#cursor",
+        { opacity: 0, x: 1400, y: 900 },
+        { opacity: 1, x: 1050, y: 550, duration: 0.8, ease: "power2.out" },
+        7.2
+      );
+
+      // Cursor clicks Option B at 8.2s
+      tl.to("#cursor", { scale: 0.85, duration: 0.1, yoyo: true, repeat: 1 }, 8.2);
+
+      // Beat-locked: 8.74s (strong cue in vol-12 preset)
+      // Option B turns emerald green with verified state
+      tl.call(
+        function () {
+          const optB = document.getElementById("s2-opt-b");
+          if (optB) {
+            optB.classList.add("option-selected-correct");
+          }
+        },
+        [],
+        8.74
+      );
+
+      // Direct citation verification banner slides in at 8.74s
+      tl.fromTo(
+        "#s2-citation",
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "back.out(1.3)" },
+        8.74
+      );
+
+      // ==========================================
+      // SCENE 3: Weakness Analysis & Targeted Practice (9.5s - 15.5s)
+      // ==========================================
+      // Stats strip entrance at 9.6s
+      tl.fromTo(
+        "#s3-stats-strip",
+        { opacity: 0, y: -20 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
+        9.6
+      );
+
+      // Topic cards entrance
+      tl.fromTo(
+        "#s3-topic-1",
+        { opacity: 0, x: -30 },
+        { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" },
+        10.1
+      );
+
+      // Beat-locked: 13.11s strong cue preparation
+      tl.fromTo(
+        "#s3-topic-2",
+        { opacity: 0, x: 30 },
+        { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" },
+        10.6
+      );
+
+      // Practice Topic button illuminates
+      tl.fromTo(
+        "#s3-practice-btn",
+        { opacity: 0, scale: 0.9 },
+        { opacity: 1, scale: 1.0, duration: 0.4, ease: "back.out(1.5)" },
+        11.5
+      );
+
+      // Simulated cursor moves to Practice Button
+      tl.to(
+        "#cursor",
+        { opacity: 1, x: 1540, y: 845, duration: 0.9, ease: "power2.inOut" },
+        12.4
+      );
+
+      // Cursor clicks button at 13.6s
+      tl.to("#cursor", { scale: 0.85, duration: 0.1, yoyo: true, repeat: 1 }, 13.6);
+
+      // Button responds to click
+      tl.call(
+        function () {
+          const btnText = document.getElementById("s3-btn-text");
+          const btnIcon = document.getElementById("s3-btn-icon");
+          const btn = document.getElementById("s3-practice-btn");
+          if (btnText) btnText.textContent = "✓ Generating Targeted Practice Quiz...";
+          if (btnIcon) btnIcon.textContent = "⚡";
+          if (btn) {
+            btn.style.background = "#064e3b";
+            btn.style.color = "#ffffff";
+            btn.style.boxShadow = "0 10px 30px rgba(6, 78, 59, 0.5)";
+          }
+        },
+        [],
+        13.65
+      );
+
+      // Cursor departs
+      tl.to("#cursor", { opacity: 0, duration: 0.3 }, 14.5);
+
+      // ==========================================
+      // SCENE 4: Outro / Punchline (15.5s - 20.5s)
+      // ==========================================
+      // Top nav fades out
+      tl.to("#top-nav", { opacity: 0, duration: 0.3 }, 15.5);
+
+      // Logo lands at 15.7s with smooth spring
+      tl.fromTo(
+        "#s4-logo",
+        { opacity: 0, scale: 0.7, y: 30 },
+        { opacity: 1, scale: 1.0, y: 0, duration: 0.6, ease: "back.out(1.5)" },
+        15.7
+      );
+
+      // Brand Title reveals
+      tl.fromTo(
+        "#s4-title",
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
+        16.1
+      );
+
+      // Punchline & Subtext
+      tl.fromTo(
+        "#s4-headline",
+        { opacity: 0, y: 15 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" },
+        16.5
+      );
+      tl.fromTo(
+        "#s4-sub",
+        { opacity: 0, y: 15 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" },
+        16.9
+      );
+
+      // Beat-locked: 17.47s & 18.56s (strong cues in vol-12)
+      // Feature tags
+      tl.fromTo(
+        "#s4-pills",
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
+        17.47
+      );
+
+      // Final CTA pill
+      tl.fromTo(
+        "#s4-cta",
+        { opacity: 0, scale: 0.9 },
+        { opacity: 1, scale: 1.0, duration: 0.4, ease: "back.out(1.4)" },
+        18.56
+      );
+
+      // Music fade out under logo
+      tl.to("#bg-music", { volume: 0, duration: 1.5, ease: "power1.out" }, 19.0);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

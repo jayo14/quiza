@@ -2,6 +2,17 @@
 
 > **Turn your study materials into interactive RAG quizzes, discover your weak spots through AI mistake analysis, and master any subject with personalized practice.**
 
+<div align="center">
+  <video src="brag-output/brag.mp4" poster="brag-output/brag.jpg" controls width="100%" style="max-width: 850px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.4);">
+    <a href="brag-output/brag.mp4">
+      <img src="brag-output/brag.jpg" alt="Quiza Product Demo Video" width="100%" style="max-width: 850px; border-radius: 12px;" />
+    </a>
+  </video>
+  <p align="center">
+    <em>🎬 <strong>Watch the 20-second product walkthrough</strong> · Direct file: <a href="brag-output/brag.mp4"><code>brag-output/brag.mp4</code></a></em>
+  </p>
+</div>
+
 ---
 
 ## Inspiration
